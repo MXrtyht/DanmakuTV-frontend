@@ -3,7 +3,7 @@
 </script>
 
 <template>
-    <div>register</div>
+    <div>This is the register page.</div>
 </template>
 
 <style scoped>
