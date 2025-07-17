@@ -4,13 +4,11 @@ import { reactive,ref } from 'vue';
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import Logo from '../assets/Logo.png';
+import { encryptKey } from '../utils/jsencryptKey';
 
-const USER_SERVICE_BASE_API = import.meta.env.VITE_USER_SERVICE_BASE_API;
+const BASE_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 
-//流程
-//先调借口拿rsa公钥
-//密码用公钥加密再传
-
+// 定义表单数据类型
 interface RuleForm {
     phone: string,
     email: string,
@@ -46,37 +44,53 @@ const rules = reactive<FormRules<RuleForm>>({
 const registerUser = async (formEl: FormInstance | undefined) => {
   if (!formEl) return
   const valid = await formEl.validate();
+
+  // 检查信息是否合法
   if(!valid) {
     ElMessage.error('请填写完整信息');
     return;
   }
-  if(form===undefined)
-    return;
+
+  // 检查两次输入的密码是否一致
   if (form.password !== form.recheckPassword) {
     ElMessage.error('两次输入的密码不一致');
     return;
   }
+
+  //流程
+  //先调借口拿rsa公钥
+  //密码用公钥加密再传
   try {
-    const RSAPassword=await axios.get(`${USER_SERVICE_BASE_API}/user/rsa-pks`);
+
+    // 获取公钥
+    const RSAPassword=await axios.get(`${BASE_URL}/user/rsa-pks`);
     if(RSAPassword.data.code!=200){
       console.error('获取RSA公钥失败:'+ RSAPassword.data.message);
       ElMessage.error('获取RSA公钥失败:'+ RSAPassword.data.message)
-      return;
+      throw new Error('获取公钥失败');
     }
-    //TODO 使用jsencrypt对密码进行加密
-    const response = await axios.post(`${USER_SERVICE_BASE_API}/user/register`, {
+
+    // 用公钥加密密码
+    const encryptedPassword = encryptKey(form.password, RSAPassword.data.data);
+
+    // 发送注册请求
+    const response = await axios.post(`${BASE_URL}/user/register`, {
         phone: form.phone,
         email: form.email,
         // 使用加密后的密码
-        password: form.password
+        password: encryptedPassword
     });
+
+    // 检查响应状态
     if (response.data.code !== 200) {
       console.error('注册失败:', response.data.message);
       ElMessage.error('注册失败:', response.data.message);
       return;
     }
+
     console.log('注册成功:', response.data);
     ElMessage.success('注册成功');
+
   } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {
           console.error('注册失败:', error.response.data.message);
