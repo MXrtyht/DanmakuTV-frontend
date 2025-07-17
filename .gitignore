@@ -28,3 +28,7 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# 移除说明md文件（除了README.md）
+*.md
+!README.md
