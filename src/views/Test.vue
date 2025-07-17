@@ -18,7 +18,7 @@
                     </div>
                 </div>
             </div>
-        </div>        
+        </div>
     </div>
 </template>
 
@@ -156,9 +156,9 @@ const changeWidth = () => {
 };
 
 // 初始化粒子特效
-const particlesInit = async (engine) => {
-  await loadFull(engine);
-};
+// const particlesInit = async (engine) => {
+//   await loadFull(engine);
+// };
 
 // 生命周期
 onMounted(() => {
@@ -292,7 +292,7 @@ onUnmounted(() => {
         margin: 18px 0;
         height: 40px;
     }
-    
+
     .login-btn {
         height: 40px;
     }
