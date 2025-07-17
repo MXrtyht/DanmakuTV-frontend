@@ -1,26 +1,60 @@
 <script setup lang='ts'>
 import axios from 'axios';
-import { reactive } from 'vue';
-import Logo from '../assets/Logo.png';
-//import { defineStore } from 'pinia'
+import { reactive, ref } from 'vue';
 
+import Logo from '../assets/Logo.png';
+import { useAuthStore } from '../stores/authentication';
+import { encryptKey } from '../utils/jsencryptKey';
+
+const BASE_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
+
+const publicKey = ref<string>('')
 
 const form = reactive({
     phone: '',
     password: '',
 })
 
+const getPubliKey = async () => {
+    try {
+        const response = await axios.get(`${BASE_URL}/user/rsa-pks`);
+        if (response.data.code === 200 && response.data.data) {
+            publicKey.value = response.data.data;
+        } else {
+            throw new Error('获取公钥失败');
+        }
+    } catch (err) {
+        console.error('无法获取公钥:', err);
+    }
+}
+
 const loginUser = async () => {
     try {
-        const response = await axios.post('http://localhost:8081/user/login', {
-            phone: form.phone,
-            password: form.password
-        });
+        // 先获取公钥
+        if (!publicKey.value) {
+            await getPubliKey();
+        }
 
-        console.log('登录成功:', response.data);
+        // 用公钥加密密码 
+        const encryptedPassword = encryptKey(form.password, publicKey.value)
+
+        // 发送登录请求
+        const response = await axios.post(
+            `${BASE_URL}/user/login`,
+            {
+                phone: form.phone,
+                password: encryptedPassword
+            }
+        );
+
+        // 用pinia保存用户token
+        const authStore = useAuthStore();
+        authStore.setToken(response.data.data);
+
+        console.log('登录成功:', response.data.data);
     } catch (error: unknown) {
         if (axios.isAxiosError(error) && error.response) {
-            console.error('注册失败:', error.response.data.message);
+            console.error('登录失败:', error.response.data.message);
         } else if (error instanceof Error) {
             console.error('请求失败:', error.message);
         } else {
