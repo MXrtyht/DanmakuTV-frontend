@@ -35,7 +35,7 @@ const loginUser = async () => {
             await getPubliKey();
         }
 
-        // 用公钥加密密码 
+        // 用公钥加密密码
         const encryptedPassword = encryptKey(form.password, publicKey.value)
 
         // 发送登录请求
@@ -89,7 +89,9 @@ const loginUser = async () => {
                         </el-form-item>
                         <el-row :gutter="0">
                             <el-col :span="6" :offset="9">
+                              <router-link to="/register">
                                 <el-button style="width: 100%;">注册</el-button>
+                              </router-link>
                             </el-col>
                             <el-col :span="6" :offset="3">
                                 <el-button style="width: 100%;" type="primary" @click="loginUser">登录</el-button>

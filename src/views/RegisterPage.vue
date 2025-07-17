@@ -142,7 +142,7 @@ const registerUser = async (formEl: FormInstance | undefined) => {
                           <el-col :span="6" :offset="9">
                             <router-link to="/login">
                               <el-button style="width: 100%;">返回登录</el-button>
-                              </router-link>
+                            </router-link>
                           </el-col>
                           <el-col :span="6" :offset="3">
                               <el-button style="width: 100%;" type="primary" @click="registerUser(ruleFormRef)">注册</el-button>
