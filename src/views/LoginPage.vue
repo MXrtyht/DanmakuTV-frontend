@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { reactive } from 'vue';
 import Logo from '../assets/Logo.png';
-import { defineStore } from 'pinia'
+//import { defineStore } from 'pinia'
 
 
 const form = reactive({
