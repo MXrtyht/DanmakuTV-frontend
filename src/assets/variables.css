@@ -1,0 +1,44 @@
+:root {
+  /* 主题色 */
+  --el-color-primary: #409eff;
+  --el-color-primary-dark-2: #337ecc;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+
+  /* 文本颜色 */
+  --el-color-text-primary: #303133;
+  --el-color-text-regular: #606266;
+  --el-color-text-secondary: #909399;
+  --el-color-text-placeholder: #a8abb2;
+  --el-color-text-disabled: #c0c4cc;
+
+  /* 边框颜色 */
+  --el-color-border-darker: #cdd0d6;
+  --el-color-border-dark: #d4d7de;
+  --el-color-border-base: #dcdfe6;
+  --el-color-border-light: #e4e7ed;
+  --el-color-border-lighter: #ebeef5;
+  --el-color-border-extra-light: #f2f6fc;
+
+  /* 填充颜色 */
+  --el-color-fill-darker: #e6e8eb;
+  --el-color-fill-dark: #ebedf0;
+  --el-color-fill-base: #f0f2f5;
+  --el-color-fill-light: #f5f7fa;
+  --el-color-fill-lighter: #fafafa;
+  --el-color-fill-extra-light: #fafcff;
+  --el-color-fill-blank: #ffffff;
+
+  /* 背景颜色 */
+  --el-color-bg-page: #f2f3f5;
+  --el-color-bg-base: #ffffff;
+  --el-color-bg-overlay: #ffffff;
+
+  /* 基础色 */
+  --el-color-basic-black: #000000;
+  --el-color-basic-white: #ffffff;
+  --el-color-transparent: transparent;
+}
