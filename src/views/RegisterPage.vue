@@ -70,6 +70,12 @@ const registerUser = async (formEl: FormInstance | undefined) => {
       throw new Error('获取公钥失败');
     }
 
+    if (!RSAPassword.data.data) {
+      console.error('获取RSA公钥失败: 公钥数据为空');
+      ElMessage.error('获取RSA公钥失败: 公钥数据为空');
+      throw new Error('获取公钥失败');
+    }
+
     // 用公钥加密密码
     const encryptedPassword = encryptKey(form.password, RSAPassword.data.data);
 
