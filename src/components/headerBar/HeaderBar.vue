@@ -1,4 +1,4 @@
-<script setup lang="ts"> // 可以留空或添加组件逻辑
+<script setup lang="ts">
 defineOptions({ name: 'HeaderBar'});
 import Logo from '../../assets/Logo.png';
 import { ref } from 'vue'
@@ -75,7 +75,7 @@ const handleSearch = () => {
 
 .search-input {
   width: 400px; /* 固定搜索框宽度 */
-  margin-left: auto; /* 将搜索框推到左侧 */
+  margin-left: auto; /* 将搜索框推到右侧 */
 }
 
 .nav-items {
