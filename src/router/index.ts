@@ -36,6 +36,11 @@ const router = createRouter({
       component: Register,
       meta: { requestAuth: false },
     },
+    {
+      path: '/test', // 测试专用路由
+      component: () => import('@/test/TestHeaderBar.vue'),
+      meta: { isTest: true } // 标记为测试路由
+    }
   ],
 })
 

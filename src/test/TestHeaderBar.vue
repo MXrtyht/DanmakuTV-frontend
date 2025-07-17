@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import Logo from '../assets/Logo.png';
 import { encryptKey } from '../utils/jsencryptKey';
+import HeaderBar from '../components/headerBar/HeaderBar.vue';
 
 const BASE_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 
@@ -108,9 +109,10 @@ const registerUser = async (formEl: FormInstance | undefined) => {
   }
 }
 </script>
-
 <template>
-    <div class="register">
+  <HeaderBar>
+  </HeaderBar>
+  <div class="register">
         <div class="register-form">
             <el-header style="margin-bottom: 40px;">
                 <div>
