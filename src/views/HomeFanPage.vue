@@ -1,19 +1,24 @@
 <template>
   <div class="user-grid">
-    <el-row :gutter="16" class="grid-container">
-      <el-col
-        v-for="user in userList"
+    <!-- 空状态提示 -->
+    <div v-if="userList.length === 0"
+      class="empty-state">
+      <el-empty description="您还没有任何粉丝" />
+    </div>
+    <!-- 粉丝列表 -->
+    <el-row v-else :gutter="16"
+      class="grid-container">
+      <el-col v-for="user in userList"
         :key="user.id"
         :xs="24"
         :sm="12"
         :md="8"
         :lg="6"
-        class="grid-item" >
-          <UserCard
-            :user="user"
-            default-text="已回关"
-            second-text="回关"
-            @follow-change="handleFollowChange" />
+        class="grid-item">
+          <UserCard :user="user"
+          default-text="已回关"
+          second-text="回关"
+          @follow-change="handleFollowChange" />
       </el-col>
     </el-row>
   </div>
@@ -23,6 +28,7 @@
 import UserCard from '@/components/userCard/UserCard.vue'
 import { computed,onMounted,ref } from 'vue'
 import axios from 'axios';
+import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
@@ -62,13 +68,18 @@ const userFollowMap = ref<Map<UserProfile, boolean>>(new Map());
 const loadData = async () => {
   try{
     // 获取关注列表
-    const response = await axios.get(`${BASE_SERVER_URL}/user/fans`);
+    const response = await request.get(`${BASE_SERVER_URL}/user/fans`);
     const data = response.data;
-    if(data.code !== 200 && !data.data){
+    if(data.code !== 200){
       console.error('获取粉丝列表失败:', data.message);
       ElMessage.error('获取粉丝列表失败');
       return;
     }
+    if(!data.data){
+      ElMessage.info('您还没有任何粉丝');
+      return;
+    }
+    console.log(data)
     data.data.forEach((user:UserFan) => {
       userFollowMap.value.set(user.profile, user.isFollowing)
     })
@@ -89,7 +100,7 @@ const handleFollowChange = async ({ newState, userId, onFailure }:{newState:bool
   const action = newState ? 'follow' : 'unfollow'
   try {
     // TODO API调用
-    const response = await axios.post(`${BASE_SERVER_URL}/user/${action}`, {
+    const response = await request.post(`${BASE_SERVER_URL}/user/${action}`, {
       userId: userId
     });
     if (response.data.code !== 200&&!response.data.data) {

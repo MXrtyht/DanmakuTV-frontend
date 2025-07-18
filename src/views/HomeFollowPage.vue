@@ -46,7 +46,11 @@
 
     <!-- 右侧网格布局 - 使用 el-main -->
     <el-main class="right-content">
-      <el-row :gutter="16">
+      <div v-if="userList===null||userList===undefined||userList.length === 0"
+        class="empty-state">
+        <el-empty description="当前内容为空" />
+      </div>
+      <el-row v-else :gutter="16">
         <el-col
           v-for="user in userList"
           :key="user.id"
@@ -66,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import UserCard from '@/components/userCard/UserCard.vue';
+import UserCard from '@/components/userCard/UserCard.vue'
 import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
 import { onMounted, reactive, ref } from 'vue';
@@ -110,7 +114,9 @@ const buttonLists = ref<ButtonItem[]>([]);;
 const userList = ref<User[]>()
 
 const loadData = async () => {
-  try {
+
+  try{
+    // 获取关注列表
     const response = await request.get(`${BASE_SERVER_URL}/user/follows`);
     const data = response.data;
     console.log(data)
