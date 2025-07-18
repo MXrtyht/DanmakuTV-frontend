@@ -79,7 +79,7 @@ const loadData = async () => {
       ElMessage.info('您还没有任何粉丝');
       return;
     }
-    console.log(data)
+
     data.data.forEach((user:UserFan) => {
       userFollowMap.value.set(user.profile, user.isFollowing)
     })
