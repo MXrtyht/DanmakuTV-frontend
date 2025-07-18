@@ -119,7 +119,6 @@ const loadData = async () => {
     // 获取关注列表
     const response = await request.get(`${BASE_SERVER_URL}/user/follows`);
     const data = response.data;
-    console.log(data)
 
     if (data.code !== 200 || !data.data) {
       ElMessage.error(data.message || '获取关注列表失败');

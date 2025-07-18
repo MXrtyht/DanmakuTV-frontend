@@ -1,4 +1,3 @@
-```
 <template>
   <div class="home">
     <el-menu
@@ -14,6 +13,7 @@
       <el-menu-item index="/home/home">动态</el-menu-item>
       <el-menu-item index="/home/home">投稿</el-menu-item>
       <el-menu-item index="/home/home">收藏</el-menu-item>
+      <el-menu-item index="/home/edit">设置</el-menu-item>
 
       <!-- 右侧空白占位 -->
       <div class="menu-spacer"></div>
@@ -22,14 +22,14 @@
       <el-menu-item index="/home/follow" class="vertical-menu-item">
         <div class="vertical-stats">
           <div class="stat-label">关注者</div>
-          <div class="stat-value">1,234</div>
+          <div class="stat-value">{{ formattedStats.follow }}</div>
         </div>
       </el-menu-item>
 
       <el-menu-item index="/home/fan" class="vertical-menu-item">
         <div class="vertical-stats">
           <div class="stat-label">粉丝数</div>
-          <div class="stat-value">5,678</div>
+          <div class="stat-value">{{ formattedStats.fan }}</div>
         </div>
       </el-menu-item>
     </el-menu>
@@ -41,12 +41,58 @@
 
 <script setup lang="ts">
 defineOptions({ name: 'HomepageLayout' });
-import { computed } from 'vue'
+import { onMounted,computed,ref } from 'vue'
 import { useRoute } from 'vue-router'
+import request from '@/utils/request';
+import axios from 'axios';
+import { ElMessage } from 'element-plus';
+
+const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
+
+// 菜单跳转
 const route = useRoute() // 动态计算激活菜单
 const activeMenu = computed(() => {
   return route.path // 直接使用当前路由路径 // 或者处理嵌套路由： // return '/' + route.path.split('/')[1]
   })
+
+// 获取关注者和粉丝数
+onMounted(() => {
+  loadData()
+})
+
+const stats = ref({
+  follow: 0, // 关注者
+  fan: 0 // 粉丝数
+})
+
+
+const loadData = async () => {
+  try{
+    // 获取关注列表
+    const response = await request.get(`${BASE_SERVER_URL}/user/fans`);
+    const data = response.data;
+    if(data.code !== 200){
+      console.error('获取粉丝数和关注数失败:', data.message);
+      ElMessage.error('获取粉丝数和关注数失败');
+      return;
+    }
+    // TODO补上调用API获取关注者和粉丝数的逻辑
+  }
+  catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response) {
+          console.error('注册失败:', error.response.data.message);
+      } else if (error instanceof Error) {
+          console.error('请求失败:', error.message);
+      } else {
+          console.error('请求失败: 未知错误');
+      }
+  }
+}
+
+const formattedStats = computed(() => ({
+  follow: stats.value.follow.toLocaleString(),
+  fan: stats.value.fan.toLocaleString()
+}))
 </script>
 
 
