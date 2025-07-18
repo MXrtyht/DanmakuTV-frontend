@@ -5,6 +5,7 @@ const Index = () => import('../views/IndexPage.vue')
 const Login = () => import('../views/LoginPage.vue')
 const Register = () => import('../views/RegisterPage.vue')
 const HomePage = () => import('../views/HomePage.vue')
+const EditPage = () => import('../views/EditPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,11 +45,11 @@ const router = createRouter({
       meta: { isTest: true } // 标记为测试路由
     },
     {
-      path: '/',
+      path: '/home',
       component: HomepageLayout,
       children: [
-        { path: '', redirect: '/home' },
-        { path: 'home', component: HomePage },
+        { path: '', component: HomePage },
+        { path: 'edit', component: EditPage }
       ]
     }
   ],
