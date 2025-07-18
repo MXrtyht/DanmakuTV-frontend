@@ -36,6 +36,7 @@ const handleSearch = () => {
             </el-input>
 
             <!-- 右侧导航项 -->
+            <!-- TODO 添加跳转-->
             <div class="nav-items">
               <span class="nav-item">个人</span>
               <span class="nav-item">消息</span>

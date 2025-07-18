@@ -9,29 +9,31 @@
       :default-active="activeMenu"
     >
       <!-- 左侧导航项 -->
-      <el-menu-item index="/home/home">主页</el-menu-item>
-      <el-menu-item index="/home/home">动态</el-menu-item>
-      <el-menu-item index="/home/home">投稿</el-menu-item>
-      <el-menu-item index="/home/home">收藏</el-menu-item>
-      <el-menu-item index="/home/edit">设置</el-menu-item>
+      <div class="left-menus">
+        <el-menu-item index="/home/home">主页</el-menu-item>
+        <el-menu-item index="/home/home">动态</el-menu-item>
+        <el-menu-item index="/home/home">投稿</el-menu-item>
+        <el-menu-item index="/home/home">收藏</el-menu-item>
+        <el-menu-item index="/home/edit">设置</el-menu-item>
+      </div>
 
-      <!-- 右侧空白占位 -->
-      <div class="menu-spacer"></div>
+      <!-- 右侧导航项 -->
+      <div class="right-menus">
+        <!-- 垂直排列的统计项 -->
+        <el-menu-item index="/home/follow" class="vertical-menu-item">
+          <div class="vertical-stats">
+            <div class="stat-label">关注者</div>
+            <div class="stat-value">{{ formattedStats.follow }}</div>
+          </div>
+        </el-menu-item>
 
-      <!-- 垂直排列的统计项 -->
-      <el-menu-item index="/home/follow" class="vertical-menu-item">
-        <div class="vertical-stats">
-          <div class="stat-label">关注者</div>
-          <div class="stat-value">{{ formattedStats.follow }}</div>
-        </div>
-      </el-menu-item>
-
-      <el-menu-item index="/home/fan" class="vertical-menu-item">
-        <div class="vertical-stats">
-          <div class="stat-label">粉丝数</div>
-          <div class="stat-value">{{ formattedStats.fan }}</div>
-        </div>
-      </el-menu-item>
+        <el-menu-item index="/home/fan" class="vertical-menu-item">
+          <div class="vertical-stats">
+            <div class="stat-label">粉丝数</div>
+            <div class="stat-value">{{ formattedStats.fan }}</div>
+          </div>
+        </el-menu-item>
+      </div>
     </el-menu>
       <main class="content">
         <router-view /> <!-- 子路由内容在此展示 -->
@@ -123,16 +125,27 @@ const formattedStats = computed(() => ({
   margin-top: 2px;
 }
 
-/* 保持原有布局的其他样式 */
-.header-menu {
+.left-menus {
   display: flex;
-  border-bottom: 1px solid #eee;
-  border-right: none;
-  padding: 0 20px;
+  align-items: center;
+  gap: 20px; /* 调整菜单间距 */
+  min-width: 200px;/* 确保左侧菜单不被折叠 */
 }
 
-.menu-spacer {
-  flex-grow: 0.95;
+.header-menu {
+  display: flex;
+  justify-content: space-between; /* 左右对齐 */
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid #eee;
+  border-right: none;
+}
+
+.right-menus {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  overflow: hidden; /* 防止内容溢出 */
 }
 
 /* 移除菜单项的默认下划线 */
