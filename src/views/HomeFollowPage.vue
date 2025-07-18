@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted,ref } from 'vue'
+import { reactive,onMounted,ref } from 'vue'
 import UserCard from '@/components/userCard/UserCard.vue'
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
@@ -77,9 +77,9 @@ interface UserProfile {
 }
 
 
-const userLists:User[][]=[];
-const buttonLists:ButtonItem[]=[];
-let userList = ref<User[]>()
+const userLists=reactive<User[][]>([]);;
+const buttonLists=ref<ButtonItem[]>([]);;
+const userList = ref<User[]>()
 
 const loadData = async () => {
   try{
@@ -103,7 +103,7 @@ const loadData = async () => {
       const buttonItem: ButtonItem = {
         name: item.name
       };
-      buttonLists.push(buttonItem);
+      buttonLists.value.push(buttonItem);
     }
 
   } catch (error: unknown) {
@@ -119,7 +119,7 @@ const loadData = async () => {
 
 const newButtonName = ref('')
 // 初始化按钮列表
-const buttonList = ref<ButtonItem[]>(buttonLists)
+const buttonList = ref<ButtonItem[]>(buttonLists.value)
 const activeButtonIndex = ref<number | null>(null)
 
 const addButton = () => {
@@ -143,7 +143,7 @@ const removeButton = (index: number) => {
 
 const selectButton = (index: number) => {
   activeButtonIndex.value = index
-  userList= ref(userLists[index] || [])
+  userList.value = userLists[index] || [];
   // 这里可以添加按钮点击后的逻辑
   console.log(`选中按钮: ${buttonList.value[index].name}`)
 }
