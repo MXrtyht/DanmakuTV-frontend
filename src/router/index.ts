@@ -50,8 +50,7 @@ const router = createRouter({
       path: '/home',
       component: HomepageLayout,
       children: [
-        { path: '', redirect: '/home' },
-        { path: 'home', component: HomePage },
+        { path: '', component: HomePage },
         { path: 'follow', component: HomeFollowPage },
         { path: 'edit', component: EditPage },
         { path: 'fan', component: HomeFanPage },

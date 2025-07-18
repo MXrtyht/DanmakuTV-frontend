@@ -18,7 +18,14 @@
         :class="{ 'active': activeButtonIndex === index }"
       >
         {{ button.name }}
-        <span class="delete-btn" @click.stop="removeButton(index)">×</span>
+        <!-- 只有自定义分组才显示删除按钮 -->
+        <span
+          v-if="button.userId !== null"
+          class="delete-btn"
+          @click.stop="removeButton(index)"
+        >
+          ×
+        </span>
       </div>
     </div>
 
@@ -42,10 +49,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive,onMounted,ref } from 'vue'
-import UserCard from '@/components/userCard/UserCard.vue'
-import axios from 'axios';
+import UserCard from '@/components/userCard/UserCard.vue';
+import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
+import { onMounted, reactive, ref } from 'vue';
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
@@ -56,6 +63,7 @@ onMounted(() => {
 
 interface ButtonItem {
   name: string
+  userId: number | null
 }
 
 interface User {
@@ -80,58 +88,93 @@ interface UserProfile {
 }
 
 
-const userLists=reactive<User[][]>([]);;
-const buttonLists=ref<ButtonItem[]>([]);;
+const userLists = reactive<User[][]>([]);;
+const buttonLists = ref<ButtonItem[]>([]);;
 const userList = ref<User[]>()
 
 const loadData = async () => {
-  try{
-    // 获取关注列表
-    const response = await axios.get(`${BASE_SERVER_URL}/user/follows`);
+  try {
+    const response = await request.get(`${BASE_SERVER_URL}/user/follows`);
     const data = response.data;
-    if(data.code !== 200 && !data.data){
-      console.error('获取关注列表失败:', data.message);
-      ElMessage.error('获取关注列表失败');
+    console.log(data)
+
+    if (data.code !== 200 || !data.data) {
+      ElMessage.error(data.message || '获取关注列表失败');
       return;
     }
 
-    for (const item of data.data) {
-      const userProfiles: User[] = item.userProfilesList.map((profile: UserProfile) => ({
-        id: profile.id.toString(),
+    // 清空之前的数据
+    userLists.length = 0;
+    buttonLists.value.length = 0;
+
+    // 去重处理（防止后端返回重复的分组）
+    const uniqueGroups = data.data.filter((group: any, index: number, self: any[]) =>
+      index === self.findIndex((g: any) => g.id === group.id)
+    );
+
+    for (const item of uniqueGroups) {
+      // 过滤掉 userProfilesList 中的 null 用户，但保留分组的 userId: null
+      const validProfiles = item.userProfilesList.filter((profile: UserProfile | null) => profile !== null);
+
+      const userProfiles: User[] = validProfiles.map((profile: UserProfile) => ({
+        id: profile.userId, // 使用 userId 作为用户ID
         name: profile.nickname,
         signature: profile.sign,
-        avatar: `${BASE_MINIO_URL}/avatar/${profile.avatar}`
+        avatar: profile.avatar && profile.avatar !== 'null'
+          ? `${BASE_MINIO_URL}/avatar/${profile.avatar}`
+          : ''
       }));
+
       userLists.push(userProfiles);
+
       const buttonItem: ButtonItem = {
-        name: item.name
+        name: item.name,
+        userId: item.userId
       };
       buttonLists.value.push(buttonItem);
     }
 
-  } catch (error: unknown) {
-      if (axios.isAxiosError(error) && error.response) {
-          console.error('注册失败:', error.response.data.message);
-      } else if (error instanceof Error) {
-          console.error('请求失败:', error.message);
-      } else {
-          console.error('请求失败: 未知错误');
-      }
+    // 更新按钮列表并初始化显示
+    buttonList.value = [...buttonLists.value];
+
+    // 默认选中第一个分组
+    if (userLists.length > 0) {
+      activeButtonIndex.value = 0;
+      userList.value = userLists[0];
+    }
+
+  } catch (error) {
+    console.error('获取关注列表失败:', error);
   }
 }
-
 const newButtonName = ref('')
 // 初始化按钮列表
 const buttonList = ref<ButtonItem[]>(buttonLists.value)
 const activeButtonIndex = ref<number | null>(null)
 
-const addButton = () => {
+const addButton = async () => {
   if (newButtonName.value.trim()) {
-    buttonList.value.push({
-      name: newButtonName.value.trim()
+    try {
+      // 调用后端API创建新分组
+      const response = await request.post(`${BASE_SERVER_URL}/user/follow-group`, {
+        userId: 0, // 随便传个数字，后端会校验替换
+        name: newButtonName.value.trim()
+      });
 
-    })
-    newButtonName.value = ''
+      if (response.data.code !== 200) {
+        ElMessage.error(response.data.message || '创建分组失败');
+        return;
+      }
+
+      ElMessage.success('分组创建成功');
+      newButtonName.value = '';
+
+      // 重新加载列表
+      await loadData();
+
+    } catch (error) {
+      console.error('创建分组失败:', error);
+    }
   }
 }
 
@@ -142,6 +185,8 @@ const removeButton = (index: number) => {
   } else if (activeButtonIndex.value !== null && activeButtonIndex.value > index) {
     activeButtonIndex.value -= 1
   }
+  // TODO: 调后端API删除分组
+  // TODO: 后端: 先把该分组中的关注人放到默认分组中 再删除
 }
 
 // 点击左侧按钮
@@ -153,30 +198,26 @@ const selectButton = (index: number) => {
 }
 
 // 关注按钮点击
-const handleFollowChange = async ({ newState, userId, onFailure }:{newState:boolean,userId:number,onFailure:()=>void}) => {
+const handleFollowChange = async ({ newState, userId, onFailure }: { newState: boolean, userId: number, onFailure: () => void }) => {
   console.log('状态变化:', newState)
   const action = newState ? 'follow' : 'unfollow'
+
   try {
-    // TODO API调用
-    const response = await axios.post(`${BASE_SERVER_URL}/user/${action}`, {
+    const response = await request.post(`${BASE_SERVER_URL}/user/${action}`, {
       userId: userId
     });
-    if (response.data.code !== 200&&!response.data.data) {
-      console.error('操作失败:', response.data.message);
-      ElMessage.error('操作失败');
+
+    if (response.data.code !== 200 || !response.data.data) {
+      ElMessage.error(response.data.message || '操作失败');
       onFailure();
       return;
     }
-    ElMessage.success(newState ? '已关注' : '已取消关注');
-  } catch (error: unknown) {
+
+    ElMessage.success(newState ? '关注成功' : '取消关注成功');
+
+  } catch (error) {
+    console.error('关注操作失败:', error);
     onFailure();
-    if (axios.isAxiosError(error) && error.response) {
-      console.error('请求失败:', error.response.data.message);
-    } else if (error instanceof Error) {
-      console.error('请求失败:', error.message);
-    } else {
-      console.error('请求失败: 未知错误');
-    }
   }
 }
 
