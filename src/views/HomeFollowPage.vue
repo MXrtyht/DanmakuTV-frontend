@@ -1,44 +1,66 @@
 <template>
-  <div class="main-container">
-    <!-- 左侧按钮列表 -->
-    <div class="left-sidebar">
+  <el-container class="main-container">
+    <!-- 左侧按钮列表 - 使用 el-aside -->
+    <el-aside width="280px" class="left-sidebar">
       <div class="add-button-container">
-        <input
+        <el-input
           v-model="newButtonName"
           placeholder="输入分组名称"
           @keyup.enter="addButton"
+          clearable
+          class="custom-input"
         >
-        <button @click="addButton">添加分组</button>
+          <template #append>
+            <el-button
+              type="primary"
+              class="add-btn"
+              @click="addButton"
+            >添加分组</el-button>
+          </template>
+        </el-input>
       </div>
-      <div
-        v-for="(button, index) in buttonList"
-        :key="index"
-        class="custom-button"
-        @click="selectButton(index)"
-        :class="{ 'active': activeButtonIndex === index }"
-      >
-        {{ button.name }}
-        <span class="delete-btn" @click.stop="removeButton(index)">×</span>
-      </div>
-    </div>
 
-    <!-- 右侧网格布局 -->
-    <div class="right-content">
-      <div class="user-grid">
-        <div class="grid-container">
+      <el-menu
+        :default-active="activeButtonIndex?.toString()"
+        class="button-menu"
+      >
+        <el-menu-item
+          v-for="(button, index) in buttonList"
+          :key="index"
+          :index="index.toString()"
+          class="custom-button"
+          @click="selectButton(index)"
+          :class="{ 'active': activeButtonIndex === index }"
+        >
+          <span class="button-text">{{ button.name }}</span>
+          <el-button
+            class="delete-btn"
+            type="danger"
+            @click.stop="removeButton(index)"
+          >删除</el-button>
+        </el-menu-item>
+      </el-menu>
+    </el-aside>
+
+    <!-- 右侧网格布局 - 使用 el-main -->
+    <el-main class="right-content">
+      <el-row :gutter="16">
+        <el-col
+          v-for="user in userList"
+          :key="user.id"
+          :xs="24" :sm="12" :md="8" :lg="6"
+        >
           <UserCard
-            v-for="user in userList"
-            :key="user.id"
             :user="user"
             default-text="已关注"
             second-text="取消关注"
             class="grid-item"
             @follow-change="handleFollowChange"
           />
-        </div>
-      </div>
-    </div>
-  </div>
+        </el-col>
+      </el-row>
+    </el-main>
+  </el-container>
 </template>
 
 <script setup lang="ts">
@@ -152,7 +174,7 @@ const selectButton = (index: number) => {
   console.log(`选中按钮: ${buttonList.value[index].name}`)
 }
 
-// 关注按钮点击
+// 按钮点击
 const handleFollowChange = async ({ newState, userId, onFailure }:{newState:boolean,userId:number,onFailure:()=>void}) => {
   console.log('状态变化:', newState)
   const action = newState ? 'follow' : 'unfollow'
@@ -184,44 +206,34 @@ const handleFollowChange = async ({ newState, userId, onFailure }:{newState:bool
 
 <style scoped>
 .main-container {
-  display: flex;
   height: 100vh;
 }
 
 .left-sidebar {
-  width: 280px;
   background-color: #f5f5f5;
   border-right: 1px solid #ddd;
-  overflow-y: auto;
-  padding: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .add-button-container {
-  display: flex;
-  gap: 5px;
-  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #fff;
 }
 
-.add-button-container input {
+.button-menu {
   flex: 1;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  overflow-y: auto;
+  border-right: none;
 }
 
-.add-button-container button {
-  padding: 8px 12px;
-  background-color: #409EFF;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
+/* 按钮列表容器 */
+.button-list-container {
+  flex: 1;
+  overflow-y: auto;
 }
 
-.add-button-container button:hover {
-  background-color: #66b1ff;
-}
-
+/* 自定义按钮样式 - 保持原有外观 */
 .custom-button {
   position: relative;
   padding: 10px 15px;
@@ -243,36 +255,25 @@ const handleFollowChange = async ({ newState, userId, onFailure }:{newState:bool
   border-color: #409EFF;
 }
 
+/* 按钮文字样式 */
+.button-text {
+  display: block;
+  width: calc(100% - 20px);
+}
+
 .delete-btn {
   position: absolute;
   right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-  padding: 0 5px;
-}
-
-.delete-btn:hover {
-  color: red;
+  font-size: 16px;
+  color: #d6cdcd;
 }
 
 .right-content {
-  flex: 1;
   padding: 20px;
-  overflow-y: auto;
-}
-
-.user-grid {
-  width: 100%;
-}
-
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+  background-color: #fff;
 }
 
 .grid-item {
-  width: 100%;
+  margin-bottom: 16px;
 }
 </style>

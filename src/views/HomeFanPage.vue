@@ -1,16 +1,21 @@
 <template>
   <div class="user-grid">
-    <div class="grid-container">
-      <UserCard
+    <el-row :gutter="16" class="grid-container">
+      <el-col
         v-for="user in userList"
         :key="user.id"
-        :user="user"
-        default-text="已回关"
-        second-text="回关"
-        class="grid-item"
-        @follow-change="handleFollowChange"
-      />
-    </div>
+        :xs="24"
+        :sm="12"
+        :md="8"
+        :lg="6"
+        class="grid-item" >
+          <UserCard
+            :user="user"
+            default-text="已回关"
+            second-text="回关"
+            @follow-change="handleFollowChange" />
+      </el-col>
+    </el-row>
   </div>
 </template>
 
