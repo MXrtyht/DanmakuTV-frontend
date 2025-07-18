@@ -1,10 +1,11 @@
-import HomepageLayout from '@/layouts/HomepageLayout.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const Index = () => import('../views/IndexPage.vue')
 const Login = () => import('../views/LoginPage.vue')
 const Register = () => import('../views/RegisterPage.vue')
 const HomePage = () => import('../views/HomePage.vue')
+const HomepageLayout = () => import( '@/layouts/HomepageLayout.vue')
+const HomeFollowPage = () => import('@/views/HomeFollowPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -49,6 +50,7 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/home' },
         { path: 'home', component: HomePage },
+        { path: 'follow', component: HomeFollowPage },
       ]
     }
   ],
