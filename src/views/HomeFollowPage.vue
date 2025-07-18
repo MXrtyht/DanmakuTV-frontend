@@ -30,7 +30,10 @@
             v-for="user in userList"
             :key="user.id"
             :user="user"
+            default-text="已关注"
+            second-text="取消关注"
             class="grid-item"
+            @follow-change="handleFollowChange"
           />
         </div>
       </div>
@@ -56,7 +59,7 @@ interface ButtonItem {
 }
 
 interface User {
-  id: string
+  id: number
   name: string
   signature: string
   avatar: string
@@ -141,12 +144,42 @@ const removeButton = (index: number) => {
   }
 }
 
+// 点击左侧按钮
 const selectButton = (index: number) => {
   activeButtonIndex.value = index
   userList.value = userLists[index] || [];
   // 这里可以添加按钮点击后的逻辑
   console.log(`选中按钮: ${buttonList.value[index].name}`)
 }
+
+// 关注按钮点击
+const handleFollowChange = async ({ newState, userId, onFailure }:{newState:boolean,userId:number,onFailure:()=>void}) => {
+  console.log('状态变化:', newState)
+  const action = newState ? 'follow' : 'unfollow'
+  try {
+    // TODO API调用
+    const response = await axios.post(`${BASE_SERVER_URL}/user/${action}`, {
+      userId: userId
+    });
+    if (response.data.code !== 200&&!response.data.data) {
+      console.error('操作失败:', response.data.message);
+      ElMessage.error('操作失败');
+      onFailure();
+      return;
+    }
+    ElMessage.success(newState ? '已关注' : '已取消关注');
+  } catch (error: unknown) {
+    onFailure();
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('请求失败:', error.response.data.message);
+    } else if (error instanceof Error) {
+      console.error('请求失败:', error.message);
+    } else {
+      console.error('请求失败: 未知错误');
+    }
+  }
+}
+
 </script>
 
 <style scoped>

@@ -14,7 +14,7 @@
         @click="toggleFollow"
         :class="{ 'unfollow': isFollowing }"
       >
-        {{ isFollowing ? '取消关注' : '关注' }}
+        {{ isFollowing ? defaultText : secondText }}
       </button>
     </div>
   </div>
@@ -24,28 +24,50 @@
 import { ref } from 'vue'
 
 interface User {
-  id: string
+  id: number
   name: string
   signature: string
   avatar: string
 }
 
-defineProps<{ user: User }>()
+// 导出属性
+const props = defineProps<{user: User;
+  defaultText?: string;
+  secondText?: string;}>()
 
 // 定义emit事件（如果需要）
 const emit = defineEmits<{
-  (e: 'follow-change', isFollowing: boolean): void
+  (
+    e: 'follow-change',
+    payload: {
+      newState: boolean,
+      userId: number,
+      onFailure: () => void
+    }
+  ): void
 }>()
 
 // 响应式状态
-const isFollowing = ref(false)
+const isFollowing = ref(true)
 
-// 方法
+// 按钮事件
 const toggleFollow = () => {
-  isFollowing.value = !isFollowing.value
-  // 可以在这里添加API调用
-  emit('follow-change', isFollowing.value)
+  const newState = !isFollowing.value
+  emit('follow-change', {
+    newState,
+    userId: props.user.id,
+    onFailure: () => {
+    // 失败回调：回滚状态
+    isFollowing.value = !newState
+  }})
+  // 乐观更新：先更新UI
+  isFollowing.value = newState
 }
+
+// 暴露接口
+defineExpose(
+  { toggleFollow }
+)
 </script>
 
 <style scoped>

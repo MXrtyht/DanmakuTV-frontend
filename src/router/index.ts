@@ -7,6 +7,7 @@ const HomePage = () => import('../views/HomePage.vue')
 const HomepageLayout = () => import( '@/layouts/HomepageLayout.vue')
 const HomeFollowPage = () => import('@/views/HomeFollowPage.vue')
 const EditPage = () => import('../views/EditPage.vue')
+const HomeFanPage = () => import('@/views/HomeFanPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -52,7 +53,8 @@ const router = createRouter({
         { path: '', redirect: '/home' },
         { path: 'home', component: HomePage },
         { path: 'follow', component: HomeFollowPage },
-        { path: 'edit', component: EditPage }
+        { path: 'edit', component: EditPage },
+        { path: 'fan', component: HomeFanPage },
       ]
     }
   ],

@@ -1,0 +1,133 @@
+<template>
+  <div class="user-grid">
+    <div class="grid-container">
+      <UserCard
+        v-for="user in userList"
+        :key="user.id"
+        :user="user"
+        default-text="已回关"
+        second-text="回关"
+        class="grid-item"
+        @follow-change="handleFollowChange"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import UserCard from '@/components/userCard/UserCard.vue'
+import { computed,onMounted,ref } from 'vue'
+import axios from 'axios';
+import { ElMessage } from 'element-plus';
+
+const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
+const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
+
+onMounted(() => {
+  loadData()
+})
+
+interface User {
+  id: number
+  name: string
+  signature: string
+  avatar: string
+}
+
+interface UserProfile {
+  id: number
+  userId: number
+  nickname: string
+  gender: string
+  birthday: string
+  sign: string
+  announcement: string
+  avatar: string
+  coin: number
+  createAt: string
+  updateAt: string
+}
+
+interface UserFan{
+  profile: UserProfile
+  isFollowing: boolean
+}
+
+const userFollowMap = ref<Map<UserProfile, boolean>>(new Map());
+const loadData = async () => {
+  try{
+    // 获取关注列表
+    const response = await axios.get(`${BASE_SERVER_URL}/user/fans`);
+    const data = response.data;
+    if(data.code !== 200 && !data.data){
+      console.error('获取粉丝列表失败:', data.message);
+      ElMessage.error('获取粉丝列表失败');
+      return;
+    }
+    data.data.forEach((user:UserFan) => {
+      userFollowMap.value.set(user.profile, user.isFollowing)
+    })
+  }
+  catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response) {
+          console.error('注册失败:', error.response.data.message);
+      } else if (error instanceof Error) {
+          console.error('请求失败:', error.message);
+      } else {
+          console.error('请求失败: 未知错误');
+      }
+  }
+}
+
+const handleFollowChange = async ({ newState, userId, onFailure }:{newState:boolean,userId:number,onFailure:()=>void}) => {
+  console.log('状态变化:', newState)
+  const action = newState ? 'follow' : 'unfollow'
+  try {
+    // TODO API调用
+    const response = await axios.post(`${BASE_SERVER_URL}/user/${action}`, {
+      userId: userId
+    });
+    if (response.data.code !== 200&&!response.data.data) {
+      console.error('操作失败:', response.data.message);
+      ElMessage.error('操作失败');
+      onFailure();
+      return;
+    }
+    ElMessage.success(newState ? '回关' : '已取消回关');
+  } catch (error: unknown) {
+    onFailure();
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('请求失败:', error.response.data.message);
+    } else if (error instanceof Error) {
+      console.error('请求失败:', error.message);
+    } else {
+      console.error('请求失败: 未知错误');
+    }
+  }
+}
+
+const userList = computed<User[]>(() => {
+  return Array.from(userFollowMap.value.keys()).map(profile => ({
+      id: profile.id,
+      name: profile.nickname,
+      signature: profile.sign,
+      avatar: `${BASE_MINIO_URL}/avatar/${profile.avatar}`
+    }))
+  })
+</script>
+
+<style scoped>
+.user-grid {
+  padding: 20px;
+}
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.grid-item {
+  width: 100%;
+}
+</style>
