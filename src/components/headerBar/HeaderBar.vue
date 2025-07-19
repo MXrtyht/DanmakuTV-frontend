@@ -1,6 +1,6 @@
 <template>
   <!-- 固定导航菜单容器 -->
-  <div class="sticky-menu-container">
+  <div :class="['headerBar-sticky-menu-container', { 'is-sticky': sticky }]">
     <el-menu
       mode="horizontal"
       background-color="transparent"
@@ -112,7 +112,7 @@
 <script setup lang="ts">
 import { Search, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref,watch } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
 import type { UserInfo } from '@/types/entity/user'
@@ -134,6 +134,16 @@ interface FrontendUserInfo {
 const userInfo = ref<FrontendUserInfo>({
   avatar: '',
   name: ''
+})
+
+const props=defineProps({
+  sticky: {
+    type: Boolean,
+    default: true // 默认固定
+} })
+
+watch(() => props.sticky, (val) => {
+  console.log('sticky prop changed:', val) // 确认值是否正确
 })
 
 // 加载用户信息
@@ -224,13 +234,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 默认导航菜单容器 */
+.headerBar-sticky-menu-container {
+  background-color: white;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
 /* 固定导航菜单容器 */
-.sticky-menu-container {
+.headerBar-sticky-menu-container.is-sticky {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background-color: white;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .header-menu {

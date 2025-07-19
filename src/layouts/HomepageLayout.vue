@@ -1,5 +1,6 @@
 <template>
-  <div class="home">
+  <div>
+    <HeaderBar :sticky="false"/>
     <!-- 新增的头部背景区域 -->
     <div class="profile-header">
       <!-- 背景图片 -->
@@ -17,7 +18,7 @@
       </div>
     </div>
     <!-- 固定导航菜单容器 -->
-    <div class="sticky-menu-container">
+    <div class="homePage-sticky-menu-container">
       <el-menu
         mode="horizontal"
         background-color="transparent"
@@ -74,6 +75,7 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import HeaderBar from '@/components/headerBar/HeaderBar.vue'
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
@@ -219,7 +221,7 @@ const formattedStats = computed(() => ({
 }
 
 /* 固定导航菜单容器 */
-.sticky-menu-container {
+.homePage-sticky-menu-container {
   position: sticky;
   top: 0;
   z-index: 1000;
