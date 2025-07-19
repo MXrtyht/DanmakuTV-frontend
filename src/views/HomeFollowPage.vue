@@ -109,8 +109,8 @@ interface UserProfile {
 }
 
 
-const userLists = reactive<User[][]>([]);;
-const buttonLists = ref<ButtonItem[]>([]);;
+const userLists = reactive<User[][]>([]);
+const buttonLists = ref<ButtonItem[]>([]);
 const userList = ref<User[]>()
 
 const loadData = async () => {
