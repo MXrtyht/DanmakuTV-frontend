@@ -28,10 +28,10 @@
       >
         <!-- 左侧导航项 -->
         <div class="left-menus">
-          <el-menu-item index="/home/home">主页</el-menu-item>
+          <el-menu-item index="/home">个人主页</el-menu-item>
           <el-menu-item index="/home/home">动态</el-menu-item>
           <el-menu-item index="/home/home">投稿</el-menu-item>
-          <el-menu-item index="/home/home">收藏</el-menu-item>
+          <el-menu-item index="/home/collect">收藏</el-menu-item>
           <el-menu-item index="/home/edit">设置</el-menu-item>
         </div>
 
@@ -118,15 +118,9 @@ const stats = ref({
 const loadData = async () => {
   try {
     // 获取关注列表
-    const fanRes = await request.get(`${BASE_SERVER_URL}/user/fans`)
     const userInfoRes = await request.get(`${BASE_SERVER_URL}/user/info`)
     const followCountRes = await request.get(`${BASE_SERVER_URL}/user/follow-count`)
     const fansCountRes = await request.get(`${BASE_SERVER_URL}/user/fans-count`)
-    if (fanRes.data.code !== 200) {
-      console.error('获取粉丝数据失败:', fanRes.data.message)
-      ElMessage.error('获取粉丝数据失败')
-      return
-    }
     if (userInfoRes.data.code !== 200) {
       console.error('获取用户信息失败:', userInfoRes.data.message)
       ElMessage.error('获取用户信息失败')
@@ -137,8 +131,8 @@ const loadData = async () => {
       ElMessage.error('获取关注总数失败')
     }
     if (fansCountRes.data.code !== 200) {
-      console.error('获取关注总数失败:', fansCountRes.data.message)
-      ElMessage.error('获取关注总数失败')
+      console.error('获取粉丝总数失败:', fansCountRes.data.message)
+      ElMessage.error('获取粉丝总数失败')
     }
 
     const backendUserInfo = userInfoRes.data.data as UserInfo

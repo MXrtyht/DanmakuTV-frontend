@@ -115,6 +115,7 @@ import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
+import type { UserInfo } from '@/types/entity/user'
 
 const router = useRouter()
 
@@ -123,18 +124,6 @@ const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
 // 搜索关键词
 const searchKeyword = ref('')
-
-// 用户信息接口
-interface UserInfo {
-  userId: number
-  nickname: string
-  gender: string
-  birthday: string
-  sign: string
-  announcement: string
-  avatar: string
-  coin: number
-}
 
 // 前端用户信息
 interface FrontendUserInfo {
