@@ -30,6 +30,7 @@ import { computed,onMounted,ref } from 'vue'
 import axios from 'axios';
 import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
+import type { UserProfile,UserCardInfo } from '@/types/entity/user'
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
@@ -37,27 +38,6 @@ const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
 onMounted(() => {
   loadData()
 })
-
-interface User {
-  id: number
-  name: string
-  signature: string
-  avatar: string
-}
-
-interface UserProfile {
-  id: number
-  userId: number
-  nickname: string
-  gender: string
-  birthday: string
-  sign: string
-  announcement: string
-  avatar: string
-  coin: number
-  createAt: string
-  updateAt: string
-}
 
 interface UserFan{
   profile: UserProfile
@@ -122,7 +102,7 @@ const handleFollowChange = async ({ newState, userId, onFailure }:{newState:bool
   }
 }
 
-const userList = computed<User[]>(() => {
+const userList = computed<UserCardInfo[]>(() => {
   return Array.from(userFollowMap.value.keys()).map(profile => ({
       id: profile.id,
       name: profile.nickname,

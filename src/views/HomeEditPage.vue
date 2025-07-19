@@ -84,8 +84,12 @@ const beforeAvatarUpload: UploadProps['beforeUpload'] = (rawFile) => {
     return true
 }
 
+interface uploadOptions {
+    file: File
+}
+
 // 自定义上传
-const customUpload = async (options: any) => {
+const customUpload = async (options: uploadOptions) => {
     avatarUploading.value = true
 
     const formData = new FormData()

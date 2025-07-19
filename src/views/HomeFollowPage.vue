@@ -74,6 +74,7 @@ import UserCard from '@/components/userCard/UserCard.vue'
 import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
 import { onMounted, reactive, ref } from 'vue';
+import type { UserProfile,UserCardInfo } from '@/types/entity/user';
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
@@ -87,31 +88,9 @@ interface ButtonItem {
   userId: number | null
 }
 
-interface User {
-  id: number
-  name: string
-  signature: string
-  avatar: string
-}
-
-interface UserProfile {
-  id: number
-  userId: number
-  nickname: string
-  gender: string
-  birthday: string
-  sign: string
-  announcement: string
-  avatar: string
-  coin: number
-  createAt: string
-  updateAt: string
-}
-
-
-const userLists = reactive<User[][]>([]);
+const userLists = reactive<UserCardInfo[][]>([]);
 const buttonLists = ref<ButtonItem[]>([]);
-const userList = ref<User[]>()
+const userList = ref<UserCardInfo[]>()
 
 const loadData = async () => {
 
@@ -133,7 +112,7 @@ const loadData = async () => {
       // 过滤掉 userProfilesList 中的 null 用户，保留分组的 userId: null
       const validProfiles = item.userProfilesList.filter((profile: UserProfile | null) => profile !== null);
 
-      const userProfiles: User[] = validProfiles.map((profile: UserProfile) => ({
+      const userProfiles: UserCardInfo[] = validProfiles.map((profile: UserProfile) => ({
         id: profile.userId, // 使用 userId 作为用户ID
         name: profile.nickname,
         signature: profile.sign,

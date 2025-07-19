@@ -6,7 +6,7 @@ const Register = () => import('../views/RegisterPage.vue')
 const HomePage = () => import('../views/HomePage.vue')
 const HomepageLayout = () => import( '@/layouts/HomePageLayout.vue')
 const HomeFollowPage = () => import('@/views/HomeFollowPage.vue')
-const EditPage = () => import('../views/EditPage.vue')
+const EditPage = () => import('../views/HomeEditPage.vue')
 const HomeFanPage = () => import('@/views/HomeFanPage.vue')
 
 const router = createRouter({
