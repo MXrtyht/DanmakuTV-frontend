@@ -1,14 +1,9 @@
 import type {VideoData} from '@/types/entity/video'
+import type {IPage} from '@/types/api/iPage'
 
 // 获取所有或某个用户所有视频
-export interface GetAllVideoResponse {
+export interface AllVideoResponse {
   code:number
   message:string
-  data:{
-    size:number
-    records: VideoData[]
-    current:number
-    total:number
-    pages:number
-  } | null
+  data:IPage<VideoData>| null
 }
