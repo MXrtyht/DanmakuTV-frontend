@@ -68,40 +68,8 @@ import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-
-interface VideoTag {
-  id: number
-  name: string
-}
-
-interface VideoVO {
-  id: number
-  userId: string
-  videoUrl: string
-  coverUrl: string
-  title: string
-  type: boolean
-  duration: number
-  area: number
-  tags: VideoTag[]
-  createAt: string
-  updateAt: string
-  // 扩展字段
-  uploaderName?: string
-  uploaderAvatar?: string
-  playCount?: number
-}
-
-interface UserProfilesVO {
-  userId: number
-  nickname: string
-  gender: string
-  birthday: string
-  sign: string
-  announcement: string
-  avatar: string
-  coin: number
-}
+import type {VideoVO} from '@/types/entity/video'
+import type { UserInfo } from '@/types/entity/user'
 
 const BASE_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 const USER_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
@@ -117,11 +85,11 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 
 // 用户信息缓存
-const userCache = ref<Map<string, UserProfilesVO>>(new Map())
+const userCache = ref<Map<string, UserInfo>>(new Map())
 
 // 批量获取用户信息
-const getBatchUserInfo = async (userIds: string[]): Promise<Map<string, UserProfilesVO>> => {
-  const userInfoMap = new Map<string, UserProfilesVO>()
+const getBatchUserInfo = async (userIds: string[]): Promise<Map<string, UserInfo>> => {
+  const userInfoMap = new Map<string, UserInfo>()
 
   // 过滤出未缓存的用户ID
   const uncachedUserIds = userIds.filter(id => !userCache.value.has(id))
@@ -147,7 +115,7 @@ const getBatchUserInfo = async (userIds: string[]): Promise<Map<string, UserProf
       const userProfiles = response.data.data
 
       // 处理返回的用户信息
-      userProfiles.forEach((userInfo: UserProfilesVO) => {
+      userProfiles.forEach((userInfo: UserInfo) => {
         // 处理头像URL
         if (userInfo.avatar) {
           userInfo.avatar = `${MINIO_SERVER_BASE}/avatar/${userInfo.avatar}`

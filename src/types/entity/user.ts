@@ -9,16 +9,8 @@ export interface UserInfo{
   coin: number
 }
 
-export interface UserProfile {
+export interface UserProfile extends UserInfo {
   id: number
-  userId: number
-  nickname: string
-  gender: string
-  birthday: string
-  sign: string
-  announcement: string
-  avatar: string
-  coin: number
   createAt: string
   updateAt: string
 }

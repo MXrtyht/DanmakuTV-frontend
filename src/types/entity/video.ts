@@ -17,6 +17,13 @@ export interface VideoData {
   updateAt: string
 }
 
+export interface VideoVO extends VideoData {
+  // 扩展字段
+  uploaderName?: string
+  uploaderAvatar?: string
+  playCount?: number
+}
+
 export interface VideoCardInfo {
   video: VideoData
   uploaderName?: string
