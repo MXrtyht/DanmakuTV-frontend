@@ -10,7 +10,7 @@
       <el-row :gutter="16">
         <!-- gutter 设置列间距 -->
         <el-col v-for="video in pageData.records" :key="video.id" :xs="24" :sm="12" :md="8" :lg="6">
-          <VideoCard :video="video" />
+          <VideoCard :video="video" @click="handleCardClick"/>
         </el-col>
       </el-row>
       <!-- 分页控件 -->
@@ -92,6 +92,12 @@ const handleSizeChange = (size: number) => {
 onMounted(() => {
   loadVideos()
 })
+
+// TODO 处理视频卡片点击事件
+const handleCardClick = (video: VideoData) => {
+  // 处理视频卡片点击事件
+  console.log('点击的视频:', video)
+}
 </script>
 
 <style scoped>

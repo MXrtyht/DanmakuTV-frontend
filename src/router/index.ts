@@ -10,6 +10,7 @@ const HomeFollowPage = () => import('@/views/HomeFollowPage.vue')
 const HomeEditPage = () => import('../views/HomeEditPage.vue')
 const HomeFanPage = () => import('@/views/HomeFanPage.vue')
 const HomeCollectVidelPage = () => import('@/views/HomeCollectVideoPage.vue')
+const HomeMomentsPage = () => import('@/views/HomeMomentsPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -64,6 +65,7 @@ const router = createRouter({
         { path: 'edit', component: HomeEditPage },
         { path: 'fan', component: HomeFanPage },
         { path: 'collect', component: HomeCollectVidelPage },
+        { path: 'moment', component: HomeMomentsPage},
       ],
     },
     {

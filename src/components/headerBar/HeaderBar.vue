@@ -199,16 +199,12 @@ const handleHistory = () => {
 
 // 收藏处理
 const handleFavorite = () => {
-  console.log('跳转到收藏页面')
-  ElMessage.info('跳转到收藏页面')
-  // TODO: 跳转到收藏页面
+  router.push('/home/collect')
 }
 
 // 动态处理
 const handleDynamic = () => {
-  console.log('跳转到动态页面')
-  ElMessage.info('跳转到动态页面')
-  // TODO: 跳转到动态页面
+  router.push('/home/moment')
 }
 
 // 下拉菜单处理
