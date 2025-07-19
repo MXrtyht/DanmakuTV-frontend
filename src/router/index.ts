@@ -1,10 +1,11 @@
+import IndexPageLayout from '@/layouts/IndexPageLayout.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
 const Index = () => import('../views/IndexPage.vue')
 const Login = () => import('../views/LoginPage.vue')
 const Register = () => import('../views/RegisterPage.vue')
 const HomePage = () => import('../views/HomePage.vue')
-const HomepageLayout = () => import( '@/layouts/HomePageLayout.vue')
+const HomepageLayout = () => import('@/layouts/HomepageLayout.vue')
 const HomeFollowPage = () => import('@/views/HomeFollowPage.vue')
 const EditPage = () => import('../views/EditPage.vue')
 const HomeFanPage = () => import('@/views/HomeFanPage.vue')
@@ -17,12 +18,19 @@ const router = createRouter({
     {
       path: '',
       redirect: '/index',
-      component: Index,
+      component: IndexPageLayout,  // 使用布局组件
       meta: { requestAuth: true },
       children: [
         {
           path: '/index',
           component: Index,
+          meta: { requestAuth: true },
+        },
+        // 视频详情页路由
+        {
+          path: '/video/:videoId',
+          component: () => import('@/views/VideoPage.vue'),
+          name: 'video',
           meta: { requestAuth: true },
         },
       ],
@@ -44,7 +52,7 @@ const router = createRouter({
     {
       path: '/test', // 测试专用路由
       component: () => import('@/test/TestHeaderBar.vue'),
-      meta: { isTest: true } // 标记为测试路由
+      meta: { isTest: true }, // 标记为测试路由
     },
     {
       path: '/home',
@@ -54,8 +62,16 @@ const router = createRouter({
         { path: 'follow', component: HomeFollowPage },
         { path: 'edit', component: EditPage },
         { path: 'fan', component: HomeFanPage },
-      ]
-    }
+      ],
+    },
+    {
+      path: '/index',
+      component: IndexPageLayout,
+      children: [
+        { path: '', component: Index },
+        { path: 'video/:videoId', component: () => import('@/views/VideoPage.vue'), name: 'video' }, // 视频页
+      ],
+    },
   ],
 })
 
