@@ -22,3 +22,15 @@ export interface UserCardInfo {
   signature: string
   avatar: string
 }
+
+// 前端用用户动态数据对象
+export interface UserMoment {
+  id: number
+  description: string
+  video: {
+    title: string
+    description: string
+    cover: string
+  }
+  time: Date
+}
