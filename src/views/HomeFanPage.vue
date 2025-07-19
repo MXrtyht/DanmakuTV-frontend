@@ -31,6 +31,7 @@ import axios from 'axios';
 import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
 import type { UserProfile,UserCardInfo } from '@/types/entity/user'
+import type { UserFanResponse } from '@/types/response/userResponse';
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
@@ -38,11 +39,6 @@ const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
 onMounted(() => {
   loadData()
 })
-
-interface UserFan{
-  profile: UserProfile
-  isFollowing: boolean
-}
 
 const userFollowMap = ref<Map<UserProfile, boolean>>(new Map());
 const loadData = async () => {
@@ -60,7 +56,7 @@ const loadData = async () => {
       return;
     }
 
-    data.data.forEach((user:UserFan) => {
+    data.data.forEach((user:UserFanResponse) => {
       userFollowMap.value.set(user.profile, user.isFollowing)
     })
   }

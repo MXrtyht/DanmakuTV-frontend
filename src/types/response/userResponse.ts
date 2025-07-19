@@ -40,3 +40,9 @@ export interface UserFollowGroupResponse {
     updateAt:string
   }[]|null
 }
+
+// 获取用户粉丝信息
+export interface UserFanResponse {
+  profile: UserProfile
+  isFollowing: boolean
+}

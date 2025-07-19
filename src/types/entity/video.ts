@@ -17,3 +17,9 @@ export interface VideoData {
   updateAt: string
 }
 
+export interface VideoCardInfo {
+  video: VideoData
+  uploaderName?: string
+  uploaderAvatar?: string
+  playCount?: number
+}

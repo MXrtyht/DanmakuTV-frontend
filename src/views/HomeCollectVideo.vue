@@ -32,51 +32,12 @@
 import VideoCard from '@/components/videoCard/VideoCard.vue'
 import request from '@/utils/request';
 import { ref, onMounted } from 'vue'
+import type { VideoData,VideoCardInfo } from '@/types/entity/video'
 
 const BASE_VEDIO_URL =import.meta.env.VITE_VIDEO_SERVICE_BASE_API;
 
-interface VideoData {
-  id: number
-  userId: string
-  videoUrl: string
-  coverUrl: string
-  title: string
-  type: boolean
-  duration: number
-  area: number
-  tags: []
-  createAt: string
-  updateAt: string
-}
-
-// interface UserProfile {
-//   id: number
-//   userId: number
-//   nickname: string
-//   gender: string
-//   birthday: string
-//   sign: string
-//   announcement: string
-//   avatar: string
-//   coin: number
-//   createAt: string
-//   updateAt: string
-// }
-
-// interface User{
-//   userId:number
-//   avatar: string
-// }
-
-interface Video {
-  video: VideoData
-  uploaderName: string
-  uploaderAvatar: string
-  playCount: number
-}
-
 const videoDataList = ref<VideoData[]>([])
-const videoList = ref<Video[]>([]);
+const videoList = ref<VideoCardInfo[]>([]);
 
 // 处理视频点击事件
 const handleVideoClick = (video: VideoData) => {

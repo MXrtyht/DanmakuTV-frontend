@@ -43,32 +43,10 @@
 
 <script setup lang="ts">
 import { VideoPlay } from '@element-plus/icons-vue'
-// import { computed } from 'vue'
+import type { VideoData,VideoCardInfo } from '@/types/entity/video'
 
-// 定义视频接口
-interface VideoData {
-  id: number
-  userId: string
-  videoUrl: string
-  coverUrl: string
-  title: string
-  type: boolean
-  duration: number
-  area: number
-  tags: []
-  createAt: string
-  updateAt: string
-}
-
-// 定义 props
-interface Props {
-  video: VideoData
-  uploaderName?: string
-  uploaderAvatar?: string
-  playCount?: number
-}
-
-const props = withDefaults(defineProps<Props>(), {
+// 导出属性
+const props = withDefaults(defineProps<VideoCardInfo>(), {
   uploaderName: '未知UP主',
   uploaderAvatar: '',
   playCount: 0
