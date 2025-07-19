@@ -1,7 +1,10 @@
 <template>
   <el-container class="main-container">
     <!-- 左侧按钮列表 - 使用 el-aside -->
-    <el-aside width="280px" class="left-sidebar">
+    <el-aside
+      width="280px"
+      class="left-sidebar"
+    >
       <div class="add-button-container">
         <el-input
           v-model="newButtonName"
@@ -35,7 +38,7 @@
           <span class="button-text">{{ button.name }}</span>
           <!-- 只有自定义分组才显示删除按钮 -->
           <el-button
-            v-show="button.userId !== null"
+            v-show="button.groupId !== 1"
             class="delete-btn"
             type="danger"
             @click.stop="removeButton(index)"
@@ -46,15 +49,23 @@
 
     <!-- 右侧网格布局 - 使用 el-main -->
     <el-main class="right-content">
-      <div v-if="userList===null||userList===undefined||userList.length === 0"
-        class="empty-state">
+      <div
+        v-if="userList === null || userList === undefined || userList.length === 0"
+        class="empty-state"
+      >
         <el-empty description="当前内容为空" />
       </div>
-      <el-row v-else :gutter="16">
+      <el-row
+        v-else
+        :gutter="16"
+      >
         <el-col
           v-for="user in userList"
           :key="user.id"
-          :xs="24" :sm="12" :md="8" :lg="6"
+          :xs="24"
+          :sm="12"
+          :md="8"
+          :lg="6"
         >
           <UserCard
             :user="user"
@@ -71,12 +82,12 @@
 </template>
 
 <script setup lang="ts">
-import UserCard from '@/components/userCard/UserCard.vue'
+import UserCard from '@/components/userCard/UserCard.vue';
+import type { UserCardInfo, UserProfile } from '@/types/entity/user';
+import type { UserFollowRequest, UserUnfollowRequest } from '@/types/request/userRequest';
 import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
 import { onMounted, reactive, ref } from 'vue';
-import type { UserProfile,UserCardInfo } from '@/types/entity/user';
-import type { UserFollowRequest, UserUnfollowRequest } from '@/types/request/userRequest';
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
@@ -87,7 +98,7 @@ onMounted(() => {
 
 interface ButtonItem {
   name: string
-  userId: number | null
+  groupId: number | null
 }
 
 const userLists = reactive<UserCardInfo[][]>([]);
@@ -96,11 +107,12 @@ const userList = ref<UserCardInfo[]>()
 
 const loadData = async () => {
 
-  try{
+  try {
     // 获取关注列表
     const response = await request.get(`${BASE_SERVER_URL}/user/follows`);
     const data = response.data;
 
+    console.log(data.data)
     if (data.code !== 200 || !data.data) {
       ElMessage.error(data.message || '获取关注列表失败');
       return;
@@ -127,7 +139,7 @@ const loadData = async () => {
 
       const buttonItem: ButtonItem = {
         name: item.name,
-        userId: item.userId
+        groupId: item.id
       };
       buttonLists.value.push(buttonItem);
     }
@@ -176,15 +188,48 @@ const addButton = async () => {
   }
 }
 
-const removeButton = (index: number) => {
-  buttonList.value.splice(index, 1)
-  if (activeButtonIndex.value === index) {
-    activeButtonIndex.value = null
-  } else if (activeButtonIndex.value !== null && activeButtonIndex.value > index) {
-    activeButtonIndex.value -= 1
+const removeButton = async (index: number) => {
+  try {
+    // 获取要删除的分组信息
+    const buttonToDelete = buttonList.value[index];
+    console.log(buttonToDelete.groupId)
+    if (!buttonToDelete || buttonToDelete.groupId === 1) {
+      ElMessage.error('无法删除默认分组');
+      return;
+    }
+
+    // 调用后端API删除分组
+    const response = await request.post(`${BASE_SERVER_URL}/user/delete-follow-group`, buttonToDelete.groupId, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (response.data.code !== 200) {
+      ElMessage.error(response.data.message || '删除分组失败');
+      return;
+    }
+
+    // API调用成功后，更新本地状态
+    buttonList.value.splice(index, 1);
+    userLists.splice(index, 1);
+
+    // 处理活动索引
+    if (activeButtonIndex.value === index) {
+      // 如果删除的是当前选中的分组，选中第一个分组
+      activeButtonIndex.value = buttonList.value.length > 0 ? 0 : null;
+      userList.value = buttonList.value.length > 0 ? userLists[0] : [];
+    } else if (activeButtonIndex.value !== null && activeButtonIndex.value > index) {
+      // 如果删除的分组在当前选中分组之前，调整索引
+      activeButtonIndex.value -= 1;
+    }
+
+    ElMessage.success('删除分组成功');
+
+  } catch (error) {
+    console.error('删除分组失败:', error);
+    ElMessage.error('删除分组失败');
   }
-  // TODO: 调后端API删除分组
-  // TODO: 后端: 先把该分组中的关注人放到默认分组中 再删除
 }
 
 // 点击左侧按钮
@@ -198,11 +243,11 @@ const selectButton = (index: number) => {
 // 关注按钮点击
 const handleFollowChange = async ({ newState, userId, onFailure }: { newState: boolean, userId: number, onFailure: () => void }) => {
   console.log('状态变化:', newState)
-  
+
   try {
     let requestBody: UserFollowRequest | UserUnfollowRequest;
     let endpoint: string;
-    
+
     if (newState) {
       // 关注操作
       endpoint = `${BASE_SERVER_URL}/user/follow`;
@@ -241,7 +286,7 @@ const handleFollowChange = async ({ newState, userId, onFailure }: { newState: b
 // 获取关注的用户当前所在的组
 const getCurrentGroupId = (): number => {
   if (activeButtonIndex.value !== null && buttonList.value[activeButtonIndex.value]) {
-    return buttonList.value[activeButtonIndex.value].userId || 1;
+    return buttonList.value[activeButtonIndex.value].groupId || 1;
   }
   return 1; // 默认分组
 };
