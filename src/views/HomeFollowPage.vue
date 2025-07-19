@@ -75,6 +75,7 @@ import request from '@/utils/request';
 import { ElMessage } from 'element-plus';
 import { onMounted, reactive, ref } from 'vue';
 import type { UserProfile,UserCardInfo } from '@/types/entity/user';
+import type { UserFollowRequest, UserUnfollowRequest } from '@/types/request/userRequest';
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
@@ -196,14 +197,33 @@ const selectButton = (index: number) => {
 // 关注按钮点击
 const handleFollowChange = async ({ newState, userId, onFailure }: { newState: boolean, userId: number, onFailure: () => void }) => {
   console.log('状态变化:', newState)
-  const action = newState ? 'follow' : 'unfollow'
-
+  
   try {
-    const response = await request.post(`${BASE_SERVER_URL}/user/${action}`, {
-      userId: userId
-    });
+    let requestBody: UserFollowRequest | UserUnfollowRequest;
+    let endpoint: string;
+    
+    if (newState) {
+      // 关注操作
+      endpoint = `${BASE_SERVER_URL}/user/follow`;
+      requestBody = {
+        userId: 0,
+        followId: userId,
+        groupId: getCurrentGroupId(),
+        createAt: new Date().toISOString()
+      } as UserFollowRequest;
+    } else {
+      // 取关操作
+      endpoint = `${BASE_SERVER_URL}/user/unfollow`;
+      requestBody = {
+        userId: 0,
+        followId: userId,
+        groupId: getCurrentGroupId()
+      } as UserUnfollowRequest;
+    }
 
-    if (response.data.code !== 200 || !response.data.data) {
+    const response = await request.post(endpoint, requestBody);
+
+    if (response.data.code !== 200) {
       ElMessage.error(response.data.message || '操作失败');
       onFailure();
       return;
@@ -216,6 +236,14 @@ const handleFollowChange = async ({ newState, userId, onFailure }: { newState: b
     onFailure();
   }
 }
+
+// 获取关注的用户当前所在的组
+const getCurrentGroupId = (): number => {
+  if (activeButtonIndex.value !== null && buttonList.value[activeButtonIndex.value]) {
+    return buttonList.value[activeButtonIndex.value].userId || 1;
+  }
+  return 1; // 默认分组
+};
 
 </script>
 
