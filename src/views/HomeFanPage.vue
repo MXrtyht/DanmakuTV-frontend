@@ -1,24 +1,23 @@
 <template>
-  <div class="user-grid">
-    <!-- 空状态提示 -->
-    <div v-if="userList.length === 0"
-      class="empty-state">
+  <div class="fan-page">
+    <!-- 粉丝列表 -->
+    <div v-if="userList.length === 0" class="empty-state">
       <el-empty description="您还没有任何粉丝" />
     </div>
-    <!-- 粉丝列表 -->
-    <el-row v-else :gutter="16"
-      class="grid-container">
-      <el-col v-for="user in userList"
+    
+    <el-row v-else :gutter="16">
+      <el-col
+        v-for="user in userList"
         :key="user.id"
-        :xs="24"
-        :sm="12"
-        :md="8"
-        :lg="6"
-        class="grid-item">
-          <UserCard :user="user"
+        :xs="24" :sm="12" :md="8" :lg="6"
+      >
+        <UserCard 
+          :user="user"
           default-text="已回关"
           second-text="回关"
-          @follow-change="handleFollowChange" />
+          class="grid-item"
+          @follow-change="handleFollowChange" 
+        />
       </el-col>
     </el-row>
   </div>
@@ -46,6 +45,7 @@ const loadData = async () => {
     // 获取关注列表
     const response = await request.get(`${BASE_SERVER_URL}/user/fans`);
     const data = response.data;
+    console.log(data)
     if(data.code !== 200){
       console.error('获取粉丝列表失败:', data.message);
       ElMessage.error('获取粉丝列表失败');
@@ -56,9 +56,17 @@ const loadData = async () => {
       return;
     }
 
-    data.data.forEach((user:UserFanResponse) => {
-      userFollowMap.value.set(user.profile, user.isFollowing)
-    })
+    // 将 Object.entries 的处理改为：
+    Object.entries(data.data).forEach(([profileKey, isFollowing]) => {
+      const profile = parseJavaObjectString(profileKey);
+      
+      const fanResponse: UserFanResponse = {
+        profile: profile,
+        isFollowing: isFollowing as boolean
+      };
+      
+      userFollowMap.value.set(fanResponse.profile, fanResponse.isFollowing);
+    });
   }
   catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {
@@ -100,26 +108,48 @@ const handleFollowChange = async ({ newState, userId, onFailure }:{newState:bool
 
 const userList = computed<UserCardInfo[]>(() => {
   return Array.from(userFollowMap.value.keys()).map(profile => ({
-      id: profile.id,
-      name: profile.nickname,
-      signature: profile.sign,
-      avatar: `${BASE_MINIO_URL}/avatar/${profile.avatar}`
-    }))
-  })
+    id: profile.userId, // 改为 userId，与 HomeFollowPage 保持一致
+    name: profile.nickname,
+    signature: profile.sign,
+    avatar: profile.avatar && profile.avatar !== 'null'
+      ? `${BASE_MINIO_URL}/avatar/${profile.avatar}`
+      : ''
+  }))
+})
+
+//解析函数
+const parseJavaObjectString = (str: string): UserProfile => {
+  // 提取括号内的内容
+  const match = str.match(/UserProfiles\((.+)\)/);
+  if (!match) throw new Error('Invalid format');
+  
+  // 解析键值对
+  const pairs = match[1].split(', ');
+  const result: Record<string, string | null> = {};
+  
+  pairs.forEach(pair => {
+    const [key, value] = pair.split('=');
+    result[key] = value === 'null' ? null : value;
+  });
+  
+  return result as unknown as UserProfile;
+}
 </script>
 
 <style scoped>
-.user-grid {
+.fan-page {
   padding: 20px;
+  background-color: #fff;
 }
 
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
 }
 
 .grid-item {
-  width: 100%;
+  margin-bottom: 16px;
 }
 </style>
