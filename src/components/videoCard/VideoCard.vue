@@ -3,8 +3,8 @@
     <div class="card-content">
       <!-- 左侧1/3：视频封面 -->
       <div class="cover-container">
-        <el-image 
-          :src="video.coverUrl" 
+        <el-image
+          :src="video.coverUrl"
           class="video-cover"
           fit="cover"
           :alt="video.title"
@@ -12,28 +12,28 @@
         <!-- 视频时长 -->
         <div class="duration">{{ formatDuration(video.duration) }}</div>
       </div>
-      
+
       <!-- 右侧2/3：视频信息 -->
       <div class="video-info">
         <!-- 视频标题 -->
         <h3 class="video-title">{{ video.title }}</h3>
-        
+
         <!-- UP主信息 -->
         <div class="uploader-info">
-          <el-avatar 
-            :src="uploaderAvatar" 
+          <el-avatar
+            :src="uploaderAvatar"
             :size="32"
             class="uploader-avatar"
           />
           <span class="uploader-name">{{ uploaderName }}</span>
         </div>
-        
+
         <!-- 播放量 -->
         <div class="play-count">
           <el-icon><VideoPlay /></el-icon>
           {{ formatPlayCount(playCount) }}
         </div>
-        
+
         <!-- 发布时间 -->
         <div class="publish-time">{{ formatTime(video.createAt) }}</div>
       </div>
@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import { VideoPlay } from '@element-plus/icons-vue'
-import { computed } from 'vue'
+// import { computed } from 'vue'
 
 // 定义视频接口
 interface VideoData {
@@ -55,7 +55,7 @@ interface VideoData {
   type: boolean
   duration: number
   area: number
-  tags: any[]
+  tags: []
   createAt: string
   updateAt: string
 }
@@ -84,7 +84,7 @@ const formatDuration = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
-  
+
   if (hours > 0) {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   } else {
@@ -105,11 +105,11 @@ const formatTime = (dateString: string): string => {
   const date = new Date(dateString)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
-  
+
   const minutes = Math.floor(diff / (1000 * 60))
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  
+
   if (minutes < 60) {
     return `${minutes}分钟前`
   } else if (hours < 24) {
