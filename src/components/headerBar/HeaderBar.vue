@@ -1,96 +1,383 @@
-<script setup lang="ts">
-defineOptions({ name: 'HeaderBar'});
-import Logo from '../../assets/Logo.png';
-import { ref } from 'vue'
-import { Search } from '@element-plus/icons-vue'
-
-const searchQuery = ref('')
-
-const handleSearch = () => {
-  console.log('搜索内容:', searchQuery.value)
-}
-
-</script>
 <template>
-  <el-container style="height: 100vh;">
-    <el-header height="60px" class="fixed-header">
-      <el-row type="flex" justify="space-between" align="middle">
-        <!-- 左侧Logo -->
-        <el-col :span="4">
-          <el-image style="width: 174px; height: 94px" :src="Logo" />
-        </el-col>
+  <!-- 固定导航菜单容器 -->
+  <div class="sticky-menu-container">
+    <el-menu
+      mode="horizontal"
+      background-color="transparent"
+      active-text-color="#409EFF"
+      class="header-menu"
+      :router="false"
+    >
+      <!-- 左侧 Logo -->
+      <div class="left-section">
+        <el-menu-item
+          index="logo"
+          class="logo-item"
+          @click="goHome"
+        >
+          <span class="logo-text">DanmakuTV</span>
+        </el-menu-item>
+      </div>
 
-        <!-- 中间空白区域 + 搜索框 -->
-        <el-col :span="16">
-          <div class="search-area">
-            <el-input
-              v-model="searchQuery"
-              placeholder="搜索视频、用户、标签..."
-              class="search-input"
-              clearable
-              @keyup.enter="handleSearch"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
+      <!-- 中间搜索框 -->
+      <div class="center-section">
+        <el-input
+          v-model="searchKeyword"
+          placeholder="搜索视频、UP主"
+          class="search-input"
+          clearable
+          size="default"
+          @keyup.enter="handleSearch"
+        >
+          <template #append>
+            <el-button
+              @click="handleSearch"
+              :icon="Search"
+            />
+          </template>
+        </el-input>
+      </div>
 
-            <!-- 右侧导航项 -->
-            <div class="nav-items">
-              <span class="nav-item">个人</span>
-              <span class="nav-item">消息</span>
-              <span class="nav-item">动态</span>
-              <span class="nav-item">收藏</span>
-              <span class="nav-item">历史</span>
-              <span class="nav-item">创作中心</span>
-            </div>
-          </div>
-        </el-col>
-      </el-row>
-    </el-header>
+      <!-- 右侧导航项 -->
+      <div class="right-section">
+        <!-- 用户头像 -->
+        <el-dropdown
+          trigger="click"
+          @command="handleCommand"
+        >
+          <el-avatar
+            :size="36"
+            :src="userInfo.avatar"
+            class="user-avatar"
+            style="cursor: pointer;"
+          >
+            <el-icon>
+              <User />
+            </el-icon>
+          </el-avatar>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">个人中心</el-dropdown-item>
+              <el-dropdown-item command="settings">设置</el-dropdown-item>
+              <el-dropdown-item
+                divided
+                command="logout"
+              >退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
 
-    <el-main style="margin-top: 60px;">
-      <router-view />
-    </el-main>
-  </el-container>
+        <!-- 动态 -->
+        <el-menu-item
+          index="dynamic"
+          class="nav-menu-item"
+          @click="handleDynamic"
+        >
+          <span>动态</span>
+        </el-menu-item>
+
+        <!-- 收藏 -->
+        <el-menu-item
+          index="favorite"
+          class="nav-menu-item"
+          @click="handleFavorite"
+        >
+          <span>收藏</span>
+        </el-menu-item>
+
+        <!-- 历史 -->
+        <el-menu-item
+          index="history"
+          class="nav-menu-item"
+          @click="handleHistory"
+        >
+          <span>历史</span>
+        </el-menu-item>
+
+        <!-- 投稿按钮 -->
+        <el-button
+          type="primary"
+          class="upload-btn"
+          size="default"
+          round
+          @click="handleUpload"
+        >
+          投稿
+        </el-button>
+      </div>
+    </el-menu>
+  </div>
 </template>
 
-<style scoped>
-.fixed-header {
-  position: fixed;
-  width: 100%;
-  z-index: 1000;
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+<script setup lang="ts">
+import { Search, User } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import request from '@/utils/request'
+
+const router = useRouter()
+
+const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
+const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
+
+// 搜索关键词
+const searchKeyword = ref('')
+
+// 用户信息接口
+interface UserInfo {
+  userId: number
+  nickname: string
+  gender: string
+  birthday: string
+  sign: string
+  announcement: string
+  avatar: string
+  coin: number
 }
 
-.search-area {
+// 前端用户信息
+interface FrontendUserInfo {
+  avatar: string
+  name: string
+}
+
+const userInfo = ref<FrontendUserInfo>({
+  avatar: '',
+  name: ''
+})
+
+// 加载用户信息
+const loadUserInfo = async () => {
+  try {
+    const userInfoRes = await request.get(`${BASE_SERVER_URL}/user/info`)
+
+    if (userInfoRes.data.code !== 200) {
+      console.error('获取用户信息失败:', userInfoRes.data.message)
+      ElMessage.error('获取用户信息失败')
+      return
+    }
+
+    const backendUserInfo = userInfoRes.data.data as UserInfo
+    userInfo.value = {
+      avatar: backendUserInfo.avatar
+        ? `${BASE_MINIO_URL}/avatar/${backendUserInfo.avatar}`
+        : '',
+      name: backendUserInfo.nickname
+    }
+  } catch (error) {
+    console.error('获取用户信息失败:', error)
+  }
+}
+
+// 搜索处理
+const handleSearch = () => {
+  if (searchKeyword.value.trim()) {
+    console.log('搜索:', searchKeyword.value)
+    ElMessage.info(`搜索: ${searchKeyword.value}`)
+    // TODO: 实现搜索功能
+  }
+}
+
+// 首页跳转
+const goHome = () => {
+  router.push('/index')
+}
+
+// 投稿处理
+const handleUpload = () => {
+  console.log('跳转到投稿页面')
+  ElMessage.info('跳转到投稿页面')
+  // TODO: 跳转到投稿页面
+}
+
+// 历史处理
+const handleHistory = () => {
+  console.log('跳转到历史页面')
+  ElMessage.info('跳转到历史页面')
+  // TODO: 跳转到历史页面
+}
+
+// 收藏处理
+const handleFavorite = () => {
+  console.log('跳转到收藏页面')
+  ElMessage.info('跳转到收藏页面')
+  // TODO: 跳转到收藏页面
+}
+
+// 动态处理
+const handleDynamic = () => {
+  console.log('跳转到动态页面')
+  ElMessage.info('跳转到动态页面')
+  // TODO: 跳转到动态页面
+}
+
+// 下拉菜单处理
+const handleCommand = (command: string) => {
+  switch (command) {
+    case 'profile':
+      router.push('/home')
+      break
+    case 'settings':
+      router.push('/home/edit')
+      break
+    case 'logout':
+      ElMessage.warning('退出登录功能待实现')
+      // TODO: 实现退出登录
+      break
+  }
+}
+
+// 初始化
+onMounted(() => {
+  loadUserInfo()
+})
+</script>
+
+<style scoped>
+/* 固定导航菜单容器 */
+.sticky-menu-container {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: white;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
+.header-menu {
   display: flex;
-  justify-content: flex-end; /* 整体右对齐 */
+  justify-content: space-between;
   align-items: center;
-  gap: 20px; /* 搜索框和导航项的间距 */
-  width: 100%;
-  height: 100%;
+  padding: 0 24px;
+  height: 60px;
+  border-bottom: 1px solid var(--el-border-color-light);
+  border-right: none;
+}
+
+/* 左侧区域 */
+.left-section {
+  display: flex;
+  align-items: center;
+  min-width: 200px;
+}
+
+.logo-item {
+  padding: 0 !important;
+  height: auto !important;
+  line-height: normal !important;
+  border-bottom: none !important;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--el-color-primary);
+  cursor: pointer;
+}
+
+/* 中间搜索区域 */
+.center-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 600px;
+  margin: 0 40px;
 }
 
 .search-input {
-  width: 400px; /* 固定搜索框宽度 */
-  margin-left: auto; /* 将搜索框推到右侧 */
+  width: 100%;
+  max-width: 500px;
 }
 
-.nav-items {
-  margin-right: 30px;
+/* 右侧区域 */
+.right-section {
   display: flex;
-  gap: 15px;
+  align-items: center;
+  gap: 16px;
+  min-width: 200px;
+  justify-content: flex-end;
 }
 
-.nav-item {
-  cursor: pointer;
-  transition: color 0.3s;
-  white-space: nowrap;
+/* 投稿按钮 */
+.upload-btn {
+  font-weight: 500;
 }
 
-.nav-item:hover {
-  color: var(--el-color-primary);
+/* 导航菜单项 */
+.nav-menu-item {
+  height: auto !important;
+  padding: 8px 12px !important;
+  line-height: normal !important;
+  border-bottom: none !important;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.nav-menu-item:hover {
+  background-color: var(--el-fill-color-light) !important;
+  color: var(--el-color-primary) !important;
+}
+
+.nav-menu-item span {
+  font-size: 14px;
+}
+
+/* 用户头像 */
+.user-avatar {
+  border: 2px solid var(--el-border-color-light);
+  transition: all 0.2s;
+}
+
+.user-avatar:hover {
+  border-color: var(--el-color-primary);
+  transform: scale(1.05);
+}
+
+/* 移除菜单项的默认下划线 */
+.el-menu--horizontal>.el-menu-item {
+  border-bottom: none !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .header-menu {
+    padding: 8px 16px;
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .center-section {
+    order: 3;
+    width: 100%;
+    margin: 10px 0 0 0;
+  }
+
+  .right-section {
+    gap: 12px;
+    min-width: auto;
+  }
+
+  .nav-menu-item span {
+    font-size: 12px;
+  }
+
+  .upload-btn {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .right-section {
+    gap: 8px;
+  }
+
+  .nav-menu-item {
+    padding: 6px 8px !important;
+  }
+
+  .nav-menu-item span {
+    display: none;
+  }
 }
 </style>
