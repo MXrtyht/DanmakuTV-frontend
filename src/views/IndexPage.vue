@@ -63,11 +63,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
-import request from '@/utils/request'
 import VideoCard from '@/components/videoCard/VideoCard.vue'
-import { da } from 'element-plus/es/locales.mjs'
+import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 interface VideoTag {
   id: number
@@ -104,7 +104,10 @@ interface UserProfilesVO {
 }
 
 const BASE_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
+const USER_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 const MINIO_SERVER_BASE = import.meta.env.VITE_MINIO_SERVER_BASE_API
+
+const router = useRouter()
 
 // 数据状态
 const videoList = ref<VideoVO[]>([])
@@ -116,37 +119,59 @@ const pageSize = ref(10)
 // 用户信息缓存
 const userCache = ref<Map<string, UserProfilesVO>>(new Map())
 
-// 获取单个用户信息
-const getUserInfo = async (userId: string): Promise<UserProfilesVO | null> => {
-  // 先检查缓存
-  if (userCache.value.has(userId)) {
-    return userCache.value.get(userId)!
+// 批量获取用户信息
+const getBatchUserInfo = async (userIds: string[]): Promise<Map<string, UserProfilesVO>> => {
+  const userInfoMap = new Map<string, UserProfilesVO>()
+
+  // 过滤出未缓存的用户ID
+  const uncachedUserIds = userIds.filter(id => !userCache.value.has(id))
+
+  // 如果所有用户信息都已缓存，直接返回
+  if (uncachedUserIds.length === 0) {
+    userIds.forEach(id => {
+      if (userCache.value.has(id)) {
+        userInfoMap.set(id, userCache.value.get(id)!)
+      }
+    })
+    return userInfoMap
   }
 
   try {
-    // 这里需要根据实际的获取单个用户信息的接口来修改
-    // 假设有一个根据 userId 获取用户信息的接口
-    const response = await request.get(`${USER_SERVER_URL}/user/profile/${userId}`)
-    
+    // 转换为数字类型的用户ID列表
+    const numericUserIds = uncachedUserIds.map(id => parseInt(id))
+
+    // 调用批量获取用户信息接口
+    const response = await request.post(`${USER_SERVER_URL}/user/batch`, numericUserIds)
+
     if (response.data.code === 200 && response.data.data) {
-      const userInfo = response.data.data
-      // 处理头像URL
-      if (userInfo.avatar) {
-        userInfo.avatar = `${MINIO_SERVER_BASE}/avatar/${userInfo.avatar}`
-      }
-      
-      // 缓存用户信息
-      userCache.value.set(userId, userInfo)
-      return userInfo
+      const userProfiles = response.data.data
+
+      // 处理返回的用户信息
+      userProfiles.forEach((userInfo: UserProfilesVO) => {
+        // 处理头像URL
+        if (userInfo.avatar) {
+          userInfo.avatar = `${MINIO_SERVER_BASE}/avatar/${userInfo.avatar}`
+        }
+
+        // 缓存用户信息
+        const userIdString = userInfo.userId.toString()
+        userCache.value.set(userIdString, userInfo)
+        userInfoMap.set(userIdString, userInfo)
+      })
     }
   } catch (error) {
-    console.error(`获取用户 ${userId} 信息失败:`, error)
+    console.error('批量获取用户信息失败:', error)
   }
-  
-  return null
+
+  // 添加已缓存的用户信息到结果中
+  userIds.forEach(id => {
+    if (userCache.value.has(id) && !userInfoMap.has(id)) {
+      userInfoMap.set(id, userCache.value.get(id)!)
+    }
+  })
+
+  return userInfoMap
 }
-
-
 
 // 加载视频列表
 const loadVideos = async (page: number = 1, isLoadMore: boolean = false) => {
@@ -172,21 +197,33 @@ const loadVideos = async (page: number = 1, isLoadMore: boolean = false) => {
     const pageData = data.data
     const records = pageData.records || []
 
-    console.log('data:')
+    console.log('视频数据:')
     console.log(records)
-    console.log( `${MINIO_SERVER_BASE}/cover/${records[1].coverUrl}`)
 
-    // 处理视频数据，添加一些模拟的扩展信息
-    const processedVideos = records.map((video: VideoVO) => ({
-      ...video,
-      // 拼接完整的封面URL：MINIO_SERVER_BASE + /cover/ + ObjectName
-      coverUrl: video.coverUrl
-        ? `${MINIO_SERVER_BASE}/cover/${video.coverUrl}`
-        : '', // 如果没有封面则为空字符串
-      uploaderName: `UP主_${video.userId}`, // 这里应该从用户信息接口获取
-      uploaderAvatar: '', // 这里应该从用户信息接口获取
-      playCount: Math.floor(Math.random() * 100000) // 模拟播放量，实际应该从接口获取
-    }))
+    // 直接提取用户ID列表，不去重（后端会处理重复ID）
+    const userIds: string[] = records.map((video: VideoVO) => video.userId)
+    console.log('用户ID列表:', userIds)
+
+    // 批量获取用户信息
+    const userInfoMap = await getBatchUserInfo(userIds)
+    console.log('用户信息映射:', userInfoMap)
+
+    // 处理视频数据
+    const processedVideos = records.map((video: VideoVO) => {
+      const userInfo = userInfoMap.get(video.userId)
+
+      return {
+        ...video,
+        // 拼接完整的封面URL
+        coverUrl: video.coverUrl
+          ? `${MINIO_SERVER_BASE}/cover/${video.coverUrl}`
+          : '',
+        // 使用真实的用户信息
+        uploaderName: userInfo?.nickname || `UP主_${video.userId}`,
+        uploaderAvatar: userInfo?.avatar || '',
+        playCount: Math.floor(Math.random() * 100000) // 模拟播放量，实际应该从接口获取
+      }
+    })
 
     if (isLoadMore) {
       videoList.value.push(...processedVideos)
@@ -214,9 +251,7 @@ const loadMore = () => {
 
 // 跳转到视频详情页
 const goToVideo = (videoId: number) => {
-  // TODO: 实现跳转到视频详情页
-  console.log('跳转到视频:', videoId)
-  // router.push(`/video/${videoId}`)
+  router.push(`/index/video/${videoId}`)
 }
 
 // 初始化
