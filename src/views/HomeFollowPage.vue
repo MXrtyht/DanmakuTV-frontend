@@ -58,8 +58,9 @@
         >
           <UserCard
             :user="user"
+            :is-followed="true"
             default-text="已关注"
-            second-text="取消关注"
+            second-text="关注"
             class="grid-item"
             @follow-change="handleFollowChange"
           />

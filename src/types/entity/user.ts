@@ -21,6 +21,7 @@ export interface UserCardInfo {
   name: string
   signature: string
   avatar: string
+  isFollowing: boolean
 }
 
 // 前端用用户动态数据对象
