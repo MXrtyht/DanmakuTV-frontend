@@ -52,16 +52,7 @@
 
       <!-- 加载更多 -->
       <div class="load-more">
-        <el-button
-          v-if="hasMore"
-          :loading="loading"
-          @click="loadMore"
-          text
-          class="load-more-btn"
-        >
-          {{ loading ? '加载中...' : '加载更多' }}
-        </el-button>
-        <div v-else class="no-more">
+        <div class="no-more">
           没有更多动态了
         </div>
       </div>
@@ -79,8 +70,6 @@ import { ElMessage } from 'element-plus'
 const MINIO_SERVICE_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 const USER_SERVICE_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 
-const loading = ref(false)
-const hasMore = ref(true)
 const activities = ref<UserMoment[]>([])
 const userAvatar=ref('')
 
@@ -132,26 +121,6 @@ const formatTime = (time:Date) => {
   } else {
     return `${days}天前`
   }
-}
-
-const loadMore = () => {
-  loading.value = true
-  // 模拟加载延迟
-  setTimeout(() => {
-    // 这里可以调用API加载更多数据
-    const newActivities = mockActivities.map(item => ({
-      ...item,
-      id: item.id + activities.value.length,
-      time: new Date(item.time.getTime() - Math.random() * 7 * 24 * 60 * 60 * 1000)
-    }))
-    activities.value.push(...newActivities)
-    loading.value = false
-
-    // 模拟没有更多数据
-    if (activities.value.length > 20) {
-      hasMore.value = false
-    }
-  }, 1000)
 }
 
 const loadData = async () => {
