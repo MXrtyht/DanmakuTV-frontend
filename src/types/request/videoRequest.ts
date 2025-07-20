@@ -16,6 +16,7 @@ export interface UploadVideoRequest {
   duration:number
   area:number
   tags: VideoTag[]
+  description: string,
 }
 
 // 查询所有视频

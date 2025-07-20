@@ -31,7 +31,7 @@
         <div class="left-menus">
           <el-menu-item index="/home">个人主页</el-menu-item>
           <el-menu-item index="/home/moment">动态</el-menu-item>
-          <el-menu-item index="/home/home">投稿</el-menu-item>
+          <el-menu-item index="/home/uploadVideo">投稿</el-menu-item>
           <el-menu-item index="/home/collect">收藏</el-menu-item>
           <el-menu-item index="/home/edit">设置</el-menu-item>
         </div>
