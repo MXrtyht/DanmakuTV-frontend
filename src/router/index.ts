@@ -12,6 +12,7 @@ const HomeFanPage = () => import('@/views/HomeFanPage.vue')
 const HomeCollectVidelPage = () => import('@/views/HomeCollectVideoPage.vue')
 const HomeMomentsPage = () => import('@/views/HomeMomentsPage.vue')
 const HomeUploadVideoPage = () => import('@/views/HomeUploadVideoPage.vue')
+const HistoryPage = () => import('@/views/HistoryPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -36,6 +37,12 @@ const router = createRouter({
           name: 'video',
           meta: { requestAuth: true },
         },
+        {
+          path: '/history',
+          component: HistoryPage,
+          name: 'history',
+          meta: { requestAuth: true },
+        }
       ],
     },
 

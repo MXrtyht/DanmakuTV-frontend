@@ -163,6 +163,9 @@ const handleCardClick = () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: #303133;
+  line-clamp: 2;
+  display: box;
+  display: -webkit-box;
 }
 
 .uploader-info {

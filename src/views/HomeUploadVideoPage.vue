@@ -495,7 +495,7 @@ const submitForm = async () => {
 const loadData = async () => {
   try {
     // 获取用户信息
-    const videoAreas = await request.get(`${BASE_VIDEO_URL}/video/area`)
+    const videoAreas = await request.get(`${BASE_VIDEO_URL}/video/all-area`)
     // TODO 写入到formData.area
     if (videoAreas.data.code !== 200||!videoAreas.data.data) {
       console.error('获取视频分区失败:', videoAreas.data.message)
