@@ -23,7 +23,7 @@ import IndexHeader from '../components/headerBar/HeaderBar.vue'
 /* 主内容区域 */
 .content {
   padding: 20px;
-  max-width: 1200px;
+  max-width: 90%;
   margin: 0 auto;
 }
 

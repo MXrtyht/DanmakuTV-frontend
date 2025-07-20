@@ -192,20 +192,14 @@ const loading = ref(true)
 const error = ref(false)
 const videoData = ref<VideoData>({
   id: 0,
-  userId: '',
+  userId: 0,
   videoUrl: '',
   coverUrl: '',
   title: '',
   type: false,
   duration: 0,
   area: 0,
-  tags: [
-    'Vue3',
-    'TypeScript' ,
-    '前端开发' ,
-    '教程' ,
-    '编程' 
-  ],
+  tags: [],
   createAt: '',
   updateAt: ''
 })
@@ -361,7 +355,7 @@ const loadVideoInfo = async () => {
   try {
     loading.value = true
     error.value = false
-    
+
     console.log('加载视频信息:', videoId)
     
     // 加载点赞信息
@@ -388,7 +382,7 @@ const loadVideoInfo = async () => {
       videoStreamUrl.value = buildVideoStreamUrl(data.videoUrl)
       console.log('视频流URL:', videoStreamUrl.value)
     }
-    
+
   } catch (err) {
     console.error('加载视频信息失败:', err)
     error.value = true

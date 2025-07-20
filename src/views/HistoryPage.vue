@@ -16,6 +16,7 @@
         </el-button>
         <!-- 搜索框 -->
           <!--之后看看要不要保留-->
+          <!-- 这里可以使用handleSearch处理其他逻辑，searchKeyword变换也可以直接过滤 -->
         <el-input
           v-model="searchKeyword"
           placeholder="搜索历史记录"
@@ -218,9 +219,13 @@ const filteredHistoryData = computed(() => {
   }
 
   return historyData.value.map(dayRecord => ({
+    //展开运算符保留原始数据
     ...dayRecord,
+    //过滤视频
     videos: dayRecord.videos.filter(video =>
+      // 过滤条件
       video.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
+      // 根据时间进行过滤，时间分割使用短横线
       video.createAt.toLowerCase().includes(searchKeyword.value.toLowerCase())
     )
   })).filter(dayRecord => dayRecord.videos.length > 0)
@@ -255,8 +260,8 @@ const loadHistory = async () => {
     // TODO 替换为实际 API 调用处理
     const response = await request.get(`${BASE_SERVER_URL}/video-views`)
     if (response.data.code !== 200) {
-      console.log('加载更多历史记录失败:', response.data.message)
-      ElMessage.error('加载更多历史记录失败')
+      console.log('加载历史记录失败:', response.data.message)
+      ElMessage.error('加载历史记录失败')
       return
     }
     // 需要对时间进行分类
@@ -279,6 +284,7 @@ const handleSearch = () => {
 }
 
 // 清空所有历史
+// TODO 看要不要删除该功能
 const handleClearHistory = async () => {
   try {
     await ElMessageBox.confirm(
@@ -299,6 +305,7 @@ const handleClearHistory = async () => {
 }
 
 // 清空指定日期的历史
+// TODO 看要不要删除该功能
 const handleClearDayHistory = async (date: string) => {
   try {
     await ElMessageBox.confirm(

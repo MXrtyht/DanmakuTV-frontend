@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import UserCard from '@/components/userCard/UserCard.vue';
-import type { UserCardInfo } from '@/types/entity/user';
+import type { UserCardInfo, UserProfile } from '@/types/entity/user';
 import type { UserFollowRequest, UserUnfollowRequest } from '@/types/request/userRequest';
 import type { UserFanResponse } from '@/types/response/userResponse';
 import request from '@/utils/request';
@@ -69,11 +69,14 @@ const loadData = async () => {
     }
 
     // 将后端返回的格式转换为 UserFanResponse 格式
-    fansList.value = data.data.map((item: any) => ({
+    fansList.value = data.data.map((item: {
+      userProfiles: UserProfile,
+      isFollowBack: boolean
+    }) => ({
       profile: item.userProfiles,
       isFollowing: item.isFollowBack
     } as UserFanResponse));
-    
+
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
       console.error('获取粉丝列表失败:', error.response.data.message);

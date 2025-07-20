@@ -94,7 +94,6 @@ onMounted(() => {
   loadVideos()
 })
 
-// TODO 处理视频卡片点击事件
 const handleCardClick = (video: VideoData) => {
   // 处理视频卡片点击事件
   router.push(`/index/video/${video.id}`)

@@ -13,6 +13,7 @@ const HomeCollectVidelPage = () => import('@/views/HomeCollectVideoPage.vue')
 const HomeMomentsPage = () => import('@/views/HomeMomentsPage.vue')
 const HomeUploadVideoPage = () => import('@/views/HomeUploadVideoPage.vue')
 const HistoryPage = () => import('@/views/HistoryPage.vue')
+const SearchPage = () => import('@/views/SearchPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -42,7 +43,7 @@ const router = createRouter({
           component: HistoryPage,
           name: 'history',
           meta: { requestAuth: true },
-        }
+        },
       ],
     },
 
@@ -63,6 +64,12 @@ const router = createRouter({
       path: '/test', // 测试专用路由
       component: () => import('@/test/TestHeaderBar.vue'),
       meta: { isTest: true }, // 标记为测试路由
+    },
+    {
+      path: '/search',
+      component: SearchPage,
+      name: 'search',
+      meta: { requestAuth: true },
     },
     {
       path: '/home',
