@@ -4,65 +4,14 @@
       <!-- 主要内容区域 -->
       <el-col :span="18">
         <!-- 视频播放器区域 -->
-        <el-card
-          class="video-card"
-          shadow="never"
-        >
-          <div class="video-player">
-            <!-- 视频播放器 -->
-            <video
-              v-if="videoStreamUrl"
-              ref="videoPlayer"
-              :src="videoStreamUrl"
-              controls
-              preload="metadata"
-              class="video-element"
-              @loadstart="onVideoLoadStart"
-              @canplay="onVideoCanPlay"
-              @error="onVideoError"
-            >
-              您的浏览器不支持视频播放
-            </video>
-
-            <!-- 加载状态 -->
-            <div
-              v-else-if="loading"
-              class="video-loading"
-            >
-              <el-icon
-                class="is-loading"
-                size="48"
-              >
-                <Loading />
-              </el-icon>
-              <p>视频加载中...</p>
-            </div>
-
-            <!-- 错误状态 -->
-            <div
-              v-else-if="error"
-              class="video-error"
-            >
-              <el-icon size="48">
-                <VideoPlay />
-              </el-icon>
-              <p>视频加载失败</p>
-              <el-button @click="loadVideoInfo">重新加载</el-button>
-            </div>
-
-            <!-- 默认占位 -->
-            <div
-              v-else
-              class="video-placeholder"
-            >
-              <el-icon size="48">
-                <VideoPlay />
-              </el-icon>
-              <p>视频播放器</p>
-              <p>视频ID: {{ videoId }}</p>
-            </div>
-          </div>
-        </el-card>
+        <!-- 使用 VideoPlayer 组件 -->
+        <VideoPlayer
+          :video-stream-url="videoStreamUrl"
+          :loading="loading"
+          :error="error"
+          :video-id=videoId
+          @retry="loadVideoInfo"
+        />
 
         <!-- 视频信息区域 -->
         <el-card
@@ -104,7 +53,9 @@
               size="large"
               @click="handleCoin"
             >
-              <el-icon><Coin /></el-icon>
+              <el-icon>
+                <Coin />
+              </el-icon>
               <span>投币</span>
               <span class="count">89</span>
             </el-button>
@@ -171,69 +122,78 @@
       </el-col>
     </el-row>
 
-        <!-- 收藏分组选择弹窗 -->
-<el-dialog
-  v-model="collectDialogVisible"
-  title="选择收藏分组"
-  width="450px"
-  :before-close="cancelCollect"
->
-  <div class="collect-dialog-content">
-    <div class="group-selection">
-      <div
-        v-for="group in collectionGroups"
-        :key="group.id"
-        class="group-item"
-        :class="{ 'selected': selectedGroupId === group.id }"
-        @click="selectedGroupId = group.id"
-      >
-        <el-radio 
-          :model-value="selectedGroupId" 
-          :value="group.id" 
-          class="group-radio"
-          @change="selectedGroupId = group.id"
-        >
-          <div class="group-content">
-            <span class="group-name">{{ group.name }}</span>
-            <span v-if="group.userId === null" class="default-tag">默认</span>
+    <!-- 收藏分组选择弹窗 -->
+    <el-dialog
+      v-model="collectDialogVisible"
+      title="选择收藏分组"
+      width="450px"
+      :before-close="cancelCollect"
+    >
+      <div class="collect-dialog-content">
+        <div class="group-selection">
+          <div
+            v-for="group in collectionGroups"
+            :key="group.id"
+            class="group-item"
+            :class="{ 'selected': selectedGroupId === group.id }"
+            @click="selectedGroupId = group.id"
+          >
+            <el-radio
+              :model-value="selectedGroupId"
+              :value="group.id"
+              class="group-radio"
+              @change="selectedGroupId = group.id"
+            >
+              <div class="group-content">
+                <span class="group-name">{{ group.name }}</span>
+                <span
+                  v-if="group.userId === null"
+                  class="default-tag"
+                >默认</span>
+              </div>
+            </el-radio>
           </div>
-        </el-radio>
+        </div>
+
+        <div
+          class="empty-state"
+          v-if="collectionGroups.length === 0"
+        >
+          <el-empty description="暂无收藏分组，请先创建分组" />
+        </div>
       </div>
-    </div>
 
-    <div class="empty-state" v-if="collectionGroups.length === 0">
-      <el-empty description="暂无收藏分组，请先创建分组" />
-    </div>
-  </div>
-
-  <template #footer>
-    <div class="dialog-footer">
-      <el-button @click="cancelCollect">取消</el-button>
-      <el-button
-        type="primary"
-        :loading="collectLoading"
-        :disabled="!selectedGroupId || collectionGroups.length === 0"
-        @click="confirmCollect"
-      >
-        确认收藏
-      </el-button>
-    </div>
-  </template>
-</el-dialog>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="cancelCollect">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="collectLoading"
+            :disabled="!selectedGroupId || collectionGroups.length === 0"
+            @click="confirmCollect"
+          >
+            确认收藏
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { VideoPlay, Loading, Star, Coin, Collection } from '@element-plus/icons-vue'
+import type { VideoData } from '@/types/entity/video'
+import type { CollectionGroup } from '@/types/entity/videoCollect'
+import request from '@/utils/request'
+import { Coin, Collection, Star } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import request from '@/utils/request'
-import type { VideoData } from '@/types/entity/video'
-import type { CollectionGroup } from '@/types/entity/videoCollect'
+
+import VideoPlayer from '../components/VideoPageComponents/VideoPlayer.vue'
+
 
 const route = useRoute()
-const videoId = route.params.videoId
+const videoId = Number(route.params.videoId)
 
 // 环境变量
 // const MINIO_SERVER_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
@@ -259,7 +219,6 @@ const videoData = ref<VideoData>({
 })
 
 const videoStreamUrl = ref('')
-const videoPlayer = ref<HTMLVideoElement>()
 
 //点赞相关状态
 const likeData = ref({
@@ -308,12 +267,12 @@ const loadLikeInfo = async () => {
 }
 
 // 互动
-const handleLike = async() => {
+const handleLike = async () => {
   if (likeLoading.value) return // 防止重复点击
 
   try {
     likeLoading.value = true
-    
+
     if (likeData.value.isLiked) {
       // 取消点赞
       const response = await request.delete(`${INTERACTION_SERVICE_URL}/video/like`, {
@@ -321,7 +280,7 @@ const handleLike = async() => {
           videoId: videoId
         }
       })
-      
+
       if (response.data.code === 200) {
         likeData.value.isLiked = false
         likeData.value.likeCount = Math.max(0, likeData.value.likeCount - 1)
@@ -336,7 +295,7 @@ const handleLike = async() => {
           videoId: videoId
         }
       })
-      
+
       if (response.data.code === 200) {
         likeData.value.isLiked = true
         likeData.value.likeCount += 1
@@ -357,7 +316,7 @@ const handleLike = async() => {
 const loadCollectionGroups = async () => {
   try {
     const response = await request.get(`${INTERACTION_SERVICE_URL}/video/collection-groups`)
-    
+
     if (response.data.code === 200) {
       collectionGroups.value = response.data.data || []
       // 默认选中第一个分组（通常是默认分组）
@@ -381,10 +340,10 @@ const handleCoin = () => {
 const handleFavorite = async () => {
   // 打开收藏分组选择弹窗
   collectDialogVisible.value = true
-  
+
   // 加载收藏分组列表
   await loadCollectionGroups()
-  
+
   // 如果已收藏，预选当前分组
   if (collectData.value.isCollected && currentCollectedGroupId.value) {
     selectedGroupId.value = currentCollectedGroupId.value
@@ -415,19 +374,19 @@ const confirmCollect = async () => {
 
     if (response.data.code === 200) {
       const wasCollected = collectData.value.isCollected
-      
+
       ElMessage.success('收藏成功')
       collectDialogVisible.value = false
-      
+
       // 更新收藏状态
       collectData.value.isCollected = true
       currentCollectedGroupId.value = selectedGroupId.value
-      
+
       // 如果之前未收藏，收藏数量+1
       if (!wasCollected) {
         collectData.value.collectCount += 1
       }
-      
+
     } else {
       throw new Error(response.data.message || '收藏失败')
     }
@@ -523,7 +482,7 @@ const loadCollectInfo = async () => {
 
     if (isCollectedResponse.data.code === 200) {
       const groupId = isCollectedResponse.data.data
-      
+
       if (groupId !== null) {
         // 已收藏，记录收藏状态和分组ID
         collectData.value.isCollected = true
@@ -561,9 +520,9 @@ const loadVideoInfo = async () => {
     error.value = false
 
     console.log('加载视频信息:', videoId)
-    
+
     // 并行加载点赞信息和收藏信息
-    const [, ] = await Promise.all([
+    const [,] = await Promise.all([
       loadLikeInfo(),
       loadCollectInfo() // 加载收藏信息
     ])
@@ -599,20 +558,6 @@ const loadVideoInfo = async () => {
   }
 }
 
-// 视频播放器事件处理
-const onVideoLoadStart = () => {
-  console.log('视频开始加载')
-}
-
-const onVideoCanPlay = () => {
-  console.log('视频可以播放')
-}
-
-const onVideoError = (event: Event) => {
-  console.error('视频播放错误:', event)
-  ElMessage.error('视频播放失败，请检查网络连接')
-}
-
 // 初始化
 onMounted(() => {
   loadVideoInfo()
@@ -624,46 +569,6 @@ onMounted(() => {
   padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
-}
-
-/* 视频播放器 */
-.video-card {
-  margin-bottom: 16px;
-}
-
-.video-player {
-  width: 100%;
-  height: 400px;
-  background: #000;
-  border-radius: 8px;
-  overflow: hidden;
-  position: relative;
-}
-
-.video-element {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.video-placeholder,
-.video-loading,
-.video-error {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: var(--el-text-color-secondary);
-  background: #f5f5f5;
-}
-
-.video-loading .el-icon {
-  margin-bottom: 16px;
-}
-
-.video-error .el-button {
-  margin-top: 16px;
 }
 
 /* 视频信息 */
@@ -860,7 +765,7 @@ onMounted(() => {
   border-color: var(--el-color-primary);
 }
 
-.group-item.selected .el-radio__input.is-checked + .el-radio__label {
+.group-item.selected .el-radio__input.is-checked+.el-radio__label {
   color: var(--el-text-color-primary);
 }
 
@@ -925,15 +830,15 @@ onMounted(() => {
     width: 90% !important;
     margin: 0 5%;
   }
-  
+
   .group-item {
     padding: 16px 12px;
   }
-  
+
   .group-name {
     font-size: 16px;
   }
-  
+
   .collect-dialog-content {
     max-height: 300px;
   }
