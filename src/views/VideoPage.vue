@@ -83,6 +83,39 @@
             </div>
           </div>
 
+          <!-- 新增：视频操作菜单栏 -->
+          <div class="video-actions">
+            <el-button
+              class="action-btn"
+              size="large"
+              @click="handleLike"
+            >
+              <el-icon><Star /></el-icon>
+              <span>点赞</span>
+              <span class="count">1.2k</span>
+            </el-button>
+
+            <el-button
+              class="action-btn"
+              size="large"
+              @click="handleCoin"
+            >
+              <el-icon><Coin /></el-icon>
+              <span>投币</span>
+              <span class="count">89</span>
+            </el-button>
+
+            <el-button
+              class="action-btn"
+              size="large"
+              @click="handleFavorite"
+            >
+              <el-icon><Collection /></el-icon>
+              <span>收藏</span>
+              <span class="count">456</span>
+            </el-button>
+          </div>
+
           <!-- 视频标签 -->
           <div
             v-if="videoData.tags && videoData.tags.length > 0"
@@ -134,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { VideoPlay, Loading } from '@element-plus/icons-vue'
+import { VideoPlay, Loading, Star, Coin, Collection } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -161,13 +194,35 @@ const videoData = ref<VideoData>({
   type: false,
   duration: 0,
   area: 0,
-  tags: [],
+  tags: [
+    { id: 1, name: 'Vue3' },
+    { id: 2, name: 'TypeScript' },
+    { id: 3, name: '前端开发' },
+    { id: 4, name: '教程' },
+    { id: 5, name: '编程' }
+  ],
   createAt: '',
   updateAt: ''
 })
 
 const videoStreamUrl = ref('')
 const videoPlayer = ref<HTMLVideoElement>()
+
+// 互动
+const handleLike = () => {
+  console.log('点赞')
+  ElMessage.success('点赞成功')
+}
+
+const handleCoin = () => {
+  console.log('投币')
+  ElMessage.success('投币成功')
+}
+
+const handleFavorite = () => {
+  console.log('收藏')
+  ElMessage.success('收藏成功')
+}
 
 // 视频分区映射
 const areaMap: Record<number, string> = {
@@ -244,6 +299,8 @@ const loadVideoInfo = async () => {
 
     const data = response.data.data as VideoData
     videoData.value = data
+
+    console.log(data)
 
     // 构建视频流URL
     if (data.videoUrl) {
@@ -383,6 +440,41 @@ onMounted(() => {
 
 .sidebar-placeholder {
   padding: 40px 0;
+}
+
+/* 视频操作菜单栏 */
+.video-actions {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--el-border-color-light);
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1px solid var(--el-border-color);
+  background: var(--el-fill-color-blank);
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.action-btn:hover {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+}
+
+.action-btn .el-icon {
+  font-size: 18px;
+}
+
+.action-btn .count {
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+  margin-left: 4px;
 }
 
 /* 响应式设计 */
