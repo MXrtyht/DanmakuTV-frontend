@@ -87,12 +87,16 @@
           <div class="video-actions">
             <el-button
               class="action-btn"
+              :class="{ 'liked': likeData.isLiked }"
               size="large"
+              :loading="likeLoading"
               @click="handleLike"
             >
-              <el-icon><Star /></el-icon>
-              <span>点赞</span>
-              <span class="count">1.2k</span>
+              <el-icon>
+                <Star :class="{ 'liked-icon': likeData.isLiked }" />
+              </el-icon>
+              <span>{{ likeData.isLiked ? '已点赞' : '点赞' }}</span>
+              <span class="count">{{ likeData.likeCount }}</span>
             </el-button>
 
             <el-button
@@ -124,11 +128,11 @@
             <span class="tags-label">标签：</span>
             <el-tag
               v-for="tag in videoData.tags"
-              :key="tag.id"
+              :key="tag"
               class="tag-item"
               size="small"
             >
-              {{ tag.name }}
+              {{ tag }}
             </el-tag>
           </div>
 
@@ -179,6 +183,7 @@ const videoId = route.params.videoId
 
 // 环境变量
 // const MINIO_SERVER_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
+const INTERACTION_SERVICE_URL = import.meta.env.VITE_INTERACTION_SERVICE_BASE_API;
 const MINIO_SERVICE_URL = import.meta.env.VITE_MINIO_SERVICE_BASE_API
 const VIDEO_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 
@@ -195,11 +200,11 @@ const videoData = ref<VideoData>({
   duration: 0,
   area: 0,
   tags: [
-    { id: 1, name: 'Vue3' },
-    { id: 2, name: 'TypeScript' },
-    { id: 3, name: '前端开发' },
-    { id: 4, name: '教程' },
-    { id: 5, name: '编程' }
+    'Vue3',
+    'TypeScript' ,
+    '前端开发' ,
+    '教程' ,
+    '编程' 
   ],
   createAt: '',
   updateAt: ''
@@ -208,10 +213,83 @@ const videoData = ref<VideoData>({
 const videoStreamUrl = ref('')
 const videoPlayer = ref<HTMLVideoElement>()
 
+//点赞相关状态
+const likeData = ref({
+  isLiked: false,
+  likeCount: 0
+})
+const likeLoading = ref(false)
+
+// 加载点赞信息
+const loadLikeInfo = async () => {
+  try {
+    const response = await request.get(`${INTERACTION_SERVICE_URL}/video/like`, {
+      params: {
+        videoId: videoId
+      }
+    })
+
+    if (response.data.code === 200) {
+      const data = response.data.data
+      likeData.value = {
+        isLiked: data.isLiked || false,
+        likeCount: data.likeCount || 0
+      }
+    }
+  } catch (error) {
+    console.error('获取点赞信息失败:', error)
+    // 失败时使用默认值
+    likeData.value = {
+      isLiked: false,
+      likeCount: 0
+    }
+  }
+}
+
 // 互动
-const handleLike = () => {
-  console.log('点赞')
-  ElMessage.success('点赞成功')
+const handleLike = async() => {
+  if (likeLoading.value) return // 防止重复点击
+
+  try {
+    likeLoading.value = true
+    
+    if (likeData.value.isLiked) {
+      // 取消点赞
+      const response = await request.delete(`${INTERACTION_SERVICE_URL}/video/like`, {
+        params: {
+          videoId: videoId
+        }
+      })
+      
+      if (response.data.code === 200) {
+        likeData.value.isLiked = false
+        likeData.value.likeCount = Math.max(0, likeData.value.likeCount - 1)
+        ElMessage.success('已取消点赞')
+      } else {
+        throw new Error(response.data.message || '取消点赞失败')
+      }
+    } else {
+      // 点赞
+      const response = await request.post(`${INTERACTION_SERVICE_URL}/video/like`, null, {
+        params: {
+          videoId: videoId
+        }
+      })
+      
+      if (response.data.code === 200) {
+        likeData.value.isLiked = true
+        likeData.value.likeCount += 1
+        ElMessage.success('点赞成功')
+      } else {
+        throw new Error(response.data.message || '点赞失败')
+      }
+    }
+  } catch (error) {
+    console.error('点赞操作失败:', error)
+    ElMessage.error('操作失败，请重试')
+  } finally {
+    likeLoading.value = false
+  }
 }
 
 const handleCoin = () => {
@@ -286,6 +364,9 @@ const loadVideoInfo = async () => {
     
     console.log('加载视频信息:', videoId)
     
+    // 加载点赞信息
+    loadLikeInfo()
+
     // 调用后端接口获取视频信息
     const response = await request.get(`${VIDEO_SERVER_URL}/video/id`, {
       params: {
@@ -465,6 +546,17 @@ onMounted(() => {
 .action-btn:hover {
   border-color: var(--el-color-primary);
   background: var(--el-color-primary-light-9);
+}
+
+/* 已点赞状态 */
+.action-btn.liked {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+}
+
+.liked-icon {
+  color: var(--el-color-primary);
 }
 
 .action-btn .el-icon {
