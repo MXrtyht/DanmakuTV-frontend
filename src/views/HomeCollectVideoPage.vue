@@ -30,9 +30,12 @@
 
 <script setup lang="ts">
 import VideoCard from '@/components/videoCard/VideoCard.vue'
+import { useRouter } from 'vue-router'
 import request from '@/utils/request';
 import { ref, onMounted } from 'vue'
 import type { VideoData,VideoCardInfo } from '@/types/entity/video'
+
+const router = useRouter()
 
 const BASE_VEDIO_URL =import.meta.env.VITE_VIDEO_SERVICE_BASE_API;
 
@@ -42,8 +45,8 @@ const videoList = ref<VideoCardInfo[]>([]);
 // 处理视频点击事件
 const handleVideoClick = (video: VideoData) => {
   // 跳转到视频详情页或其他处理
-  console.log('点击视频:', video)
-  // router.push(`/video/${video.id}`)
+  // console.log('点击视频:', video)
+  router.push(`/index/video/${video.id}`)
 }
 
 // 加载视频数据的方法（替换原有的加载用户数据方法）

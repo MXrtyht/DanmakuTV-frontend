@@ -320,7 +320,7 @@ const handleClearDayHistory = async (date: string) => {
 
 // 视频点击处理
 const handleVideoClick = (video: VideoVO) => {
-  router.push(`/video/${video.id}`)
+  router.push(`/index/video/${video.id}`)
 }
 
 // 返回首页
