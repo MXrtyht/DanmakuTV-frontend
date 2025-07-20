@@ -1,6 +1,6 @@
 export interface VideoData {
   id: number
-  userId: string
+  userId: number
   videoUrl: string
   coverUrl: string
   title: string
