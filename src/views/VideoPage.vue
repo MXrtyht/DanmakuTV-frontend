@@ -194,13 +194,7 @@ const videoData = ref<VideoData>({
   type: false,
   duration: 0,
   area: 0,
-  tags: [
-    { id: 1, name: 'Vue3' },
-    { id: 2, name: 'TypeScript' },
-    { id: 3, name: '前端开发' },
-    { id: 4, name: '教程' },
-    { id: 5, name: '编程' }
-  ],
+  tags: [],
   createAt: '',
   updateAt: ''
 })
