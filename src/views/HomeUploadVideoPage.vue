@@ -138,13 +138,13 @@
         <!-- 视频类型 -->
         <el-form-item label="视频类型" prop="type" required>
           <el-radio-group v-model="formData.type">
-            <el-radio label="original">自制</el-radio>
-            <el-radio label="reprint">转载</el-radio>
+            <el-radio :label="true">自制</el-radio>
+            <el-radio :label="false">转载</el-radio>
           </el-radio-group>
         </el-form-item>
 
         <!-- 视频分区 -->
-        <el-form-item label="视频分区" prop="category" required>
+        <el-form-item label="视频分区" prop="area" required>
           <el-select
             v-model="formData.area"
             placeholder="请选择视频分区"
@@ -161,7 +161,6 @@
         </el-form-item>
 
         <!-- 视频标签 -->
-        <!-- Warning: 还没确定 -->
         <el-form-item label="视频标签" required>
           <div class="tags-container">
             <el-tag
@@ -226,10 +225,10 @@ import {
   Close,
   Plus
 } from '@element-plus/icons-vue'
-// import type { UploadVideoRequest } from '@/types/request/videoRequest'
 import type { UploadFile } from 'element-plus'
 import axios from 'axios'
 import request from '@/utils/request'
+import { getVideoDuration } from '@/utils/computeDuration'
 
 /**
  * 目前上传的流程
@@ -251,7 +250,7 @@ const uploadStatus = ref('')
 const submitting = ref(false)
 const coverPreviewUrl = ref('')
 
-const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
+const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVICE_BASE_API;
 const BASE_VIDEO_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API;
 
 interface uploadFormData{
@@ -264,6 +263,11 @@ interface uploadFormData{
   type: boolean,
   area: number,
   tags: string[],
+}
+
+interface VideoArea {
+  value: number;
+  label: string;
 }
 
 // 表单数据
@@ -279,19 +283,8 @@ const formData = reactive<uploadFormData>({
   tags: [],
 })
 
-// 视频分区选项 临时数据
-const categories = [
-  { label: '生活', value: 'life' },
-  { label: '娱乐', value: 'entertainment' },
-  { label: '科技', value: 'tech' },
-  { label: '游戏', value: 'gaming' },
-  { label: '音乐', value: 'music' },
-  { label: '体育', value: 'sports' },
-  { label: '教育', value: 'education' },
-  { label: '美食', value: 'food' },
-  { label: '旅行', value: 'travel' },
-  { label: '其他', value: 'other' }
-]
+// 视频分区选项
+const categories = ref<VideoArea[]>();
 
 // 表单验证规则
 const rules = {
@@ -302,7 +295,7 @@ const rules = {
   type: [
     { required: true, message: '请选择视频类型', trigger: 'change' }
   ],
-  category: [
+  area: [
     { required: true, message: '请选择视频分区', trigger: 'change' }
   ],
   tags: [
@@ -344,10 +337,12 @@ const beforeUpload = (file:UploadFile) => {
 const handleFileChange = (file:UploadFile) => {
   if (beforeUpload(file)) {
     ElMessage.success('视频文件选择成功!')
+    formData.videoFile = file
   }
 }
 
 const beforeCoverUpload = (file:UploadFile) => {
+  console.log('beforeCoverUpload', file)
   if (file.raw===undefined){
     return false
   }
@@ -372,6 +367,7 @@ const handleCoverChange = (file:UploadFile) => {
   if (beforeCoverUpload(file)&&file.raw!==undefined) {
     // 创建预览URL
     coverPreviewUrl.value = URL.createObjectURL(file.raw)
+    formData.coverFile = file
     ElMessage.success('封面图片选择成功!')
   }
 }
@@ -460,27 +456,70 @@ const submitForm = async () => {
     ElMessage.error('请先选择封面文件')
     return
   }
-
-  try {
+  // 验证表单
+  try{
     await formRef.value.validate()
     submitting.value = true
-    // 上传视频封面文件
-    const uploadVideoRes=await request.post(`${BASE_MINIO_URL}/video/upload-video`)
-    const uploadCoverRes=await request.post(`${BASE_MINIO_URL}/video/upload-cover`)
-    if (uploadVideoRes.data.code !== 200||!uploadVideoRes.data.data) {
-      console.error('获取视频标签失败:', uploadVideoRes.data.message)
-      ElMessage.error('获取视频标签失败')
-      return
+  }
+  catch (error) {
+    submitting.value = false
+    if (error instanceof Error) {
+      ElMessage.error(`表单验证失败: ${error.message}`)
+    } else {
+      ElMessage.error('表单验证失败: 未知错误')
     }
-    if (uploadCoverRes.data.code !== 200||!uploadCoverRes.data.data) {
-      console.error('获取视频分区失败:', uploadCoverRes.data.message)
-      ElMessage.error('获取视频分区失败')
-      return
-    }
-    // TODO 上传信息到服务器
+    return
+  }
 
+  try {
+    const videoFileForm=new FormData()
+    const coverFileForm=new FormData()
+    videoFileForm.append('file', formData.videoFile!.raw!)
+    videoFileForm.append('bucketName', "video")
+    // 上传视频以及封面文件
+    const uploadVideoRes=await request.post(`${BASE_MINIO_URL}/upload/single`,videoFileForm,{
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    coverFileForm.append('file', formData.coverFile!.raw!)
+    coverFileForm.append('bucketName', "cover")
+    const uploadCoverRes=await request.post(`${BASE_MINIO_URL}/upload/single`,coverFileForm, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    if (!uploadVideoRes.data) {
+      console.error('获取视频URL失败:', uploadVideoRes.data)
+      ElMessage.error('获取视频URL失败')
+      return
+    }
+    if (!uploadCoverRes.data) {
+      console.error('获取视频封面URL失败:', uploadCoverRes.data)
+      ElMessage.error('获取视频封面URL失败')
+      return
+    }
+    // 计算视频时长
+    const videoDuration=await getVideoDuration(formData.videoFile!.raw!)
+    // console.log('视频时长:', videoDuration, '秒')
+    // 上传视频
+    const response=await request.post(`${BASE_VIDEO_URL}/video/user`, {
+      userId: formData.userId,
+      title: formData.title,
+      description: formData.description,
+      duration: Math.round(Number(videoDuration)),
+      type: formData.type,
+      area: formData.area,
+      tags: formData.tags,
+      videoUrl: uploadVideoRes.data, // 视频文件的URL
+      coverUrl: uploadCoverRes.data // 封面文件的URL
+    })
+    if (response.data.code !== 200||!response.data.data) {
+      console.error('上传视频失败:', response.data)
+      ElMessage.error('上传视频失败')
+      return
+    }
   } catch (error) {
-    console.error('表单验证失败:', error)
     submitting.value = false
     if (axios.isAxiosError(error) && error.response) {
       console.error('获取信息失败:', error.response.data.message)
@@ -490,18 +529,26 @@ const submitForm = async () => {
       console.error('请求失败: 未知错误')
     }
   }
+  finally{
+    submitting.value = false
+    ElMessage.success('视频上传成功！')
+  }
 }
 
 const loadData = async () => {
   try {
-    // 获取用户信息
+    // 获取分区信息
     const videoAreas = await request.get(`${BASE_VIDEO_URL}/video/all-area`)
-    // TODO 写入到formData.area
     if (videoAreas.data.code !== 200||!videoAreas.data.data) {
       console.error('获取视频分区失败:', videoAreas.data.message)
       ElMessage.error('获取视频分区失败')
       return
     }
+    categories.value = videoAreas.data.data.map((item: { id?: unknown; name?: unknown }) => ({
+        value: Number(item.id),
+        label: String(item.name ?? '')
+      })
+    )
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
       console.error('获取信息失败:', error.response.data.message)
@@ -606,7 +653,7 @@ onMounted(() => {
 }
 
 .file-preview {
-  padding: 20px;
+  padding: 20px 0;
   width: 100%;
 }
 
@@ -650,7 +697,7 @@ onMounted(() => {
 
 .cover-uploader :deep(.el-upload-dragger) {
   width: 100%;
-  height: 160px;
+  height: 300px;
   border: 2px dashed #d9d9d9;
   border-radius: 8px;
   transition: all 0.3s ease;
