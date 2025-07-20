@@ -85,11 +85,11 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 
 // 用户信息缓存
-const userCache = ref<Map<string, UserInfo>>(new Map())
+const userCache = ref<Map<number, UserInfo>>(new Map())
 
 // 批量获取用户信息
-const getBatchUserInfo = async (userIds: string[]): Promise<Map<string, UserInfo>> => {
-  const userInfoMap = new Map<string, UserInfo>()
+const getBatchUserInfo = async (userIds: number[]): Promise<Map<number, UserInfo>> => {
+  const userInfoMap = new Map<number, UserInfo>()
 
   // 过滤出未缓存的用户ID
   const uncachedUserIds = userIds.filter(id => !userCache.value.has(id))
@@ -106,7 +106,7 @@ const getBatchUserInfo = async (userIds: string[]): Promise<Map<string, UserInfo
 
   try {
     // 转换为数字类型的用户ID列表
-    const numericUserIds = uncachedUserIds.map(id => parseInt(id))
+    const numericUserIds = uncachedUserIds.map(id => id)
 
     // 调用批量获取用户信息接口
     const response = await request.post(`${USER_SERVER_URL}/user/batch`, numericUserIds)
@@ -122,7 +122,7 @@ const getBatchUserInfo = async (userIds: string[]): Promise<Map<string, UserInfo
         }
 
         // 缓存用户信息
-        const userIdString = userInfo.userId.toString()
+        const userIdString = userInfo.userId
         userCache.value.set(userIdString, userInfo)
         userInfoMap.set(userIdString, userInfo)
       })
@@ -169,7 +169,7 @@ const loadVideos = async (page: number = 1, isLoadMore: boolean = false) => {
     console.log(records)
 
     // 直接提取用户ID列表，不去重（后端会处理重复ID）
-    const userIds: string[] = records.map((video: VideoVO) => video.userId)
+    const userIds: number[] = records.map((video: VideoVO) => video.userId)
     console.log('用户ID列表:', userIds)
 
     // 批量获取用户信息

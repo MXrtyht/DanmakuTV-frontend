@@ -230,7 +230,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import request from '@/utils/request'
 import type { VideoData } from '@/types/entity/video'
-import type { CollectionGroup, VideoCollect } from '@/types/entity/videoCollect'
+import type { CollectionGroup } from '@/types/entity/videoCollect'
 
 const route = useRoute()
 const videoId = route.params.videoId
@@ -273,6 +273,7 @@ const collectDialogVisible = ref(false)
 const collectionGroups = ref<CollectionGroup[]>([])
 const selectedGroupId = ref<number | null>(null)
 const collectLoading = ref(false)
+const currentCollectedGroupId = ref<number | null>(null)
 
 // 收藏数据状态
 const collectData = ref({
@@ -383,10 +384,17 @@ const handleFavorite = async () => {
   
   // 加载收藏分组列表
   await loadCollectionGroups()
+  
+  // 如果已收藏，预选当前分组
+  if (collectData.value.isCollected && currentCollectedGroupId.value) {
+    selectedGroupId.value = currentCollectedGroupId.value
+  } else if (collectionGroups.value.length > 0) {
+    // 未收藏时默认选中第一个分组
+    selectedGroupId.value = collectionGroups.value[0].id
+  }
 }
 
 // 确认收藏
-// 修改 confirmCollect 函数
 const confirmCollect = async () => {
   if (!selectedGroupId.value) {
     ElMessage.warning('请选择收藏分组')
@@ -406,12 +414,19 @@ const confirmCollect = async () => {
     const response = await request.post(`${INTERACTION_SERVICE_URL}/video/add-collection`, addVideoCollectionDTO)
 
     if (response.data.code === 200) {
+      const wasCollected = collectData.value.isCollected
+      
       ElMessage.success('收藏成功')
       collectDialogVisible.value = false
       
-      // 收藏成功后更新状态
+      // 更新收藏状态
       collectData.value.isCollected = true
-      collectData.value.collectCount += 1
+      currentCollectedGroupId.value = selectedGroupId.value
+      
+      // 如果之前未收藏，收藏数量+1
+      if (!wasCollected) {
+        collectData.value.collectCount += 1
+      }
       
     } else {
       throw new Error(response.data.message || '收藏失败')
@@ -499,27 +514,25 @@ const loadCollectInfo = async () => {
       collectData.value.collectCount = countResponse.data.data || 0
     }
 
-    // 检查当前用户是否已收藏（通过获取用户的收藏列表来判断）
-    try {
-      const userCollectionsResponse = await request.get(`${INTERACTION_SERVICE_URL}/video/collected-videos`)
-      
-      if (userCollectionsResponse.data.code === 200) {
-        const allCollections = userCollectionsResponse.data.data || []
-        console.log(allCollections)
-
-        // 检查当前视频是否在用户的收藏列表中
-        const isCollected = allCollections.some((group: CollectionGroup) => 
-          group.videoIdList?.some((collection: VideoCollect) => 
-            collection.videoId === Number(videoId)
-          )
-        )
-        
-        collectData.value.isCollected = isCollected
+    // 使用新接口检查是否已收藏
+    const isCollectedResponse = await request.get(`${INTERACTION_SERVICE_URL}/video/is-video-collected`, {
+      params: {
+        videoId: videoId
       }
-    } catch (error) {
-      console.log(error)
-      // 如果用户未登录或获取失败，默认为未收藏
-      collectData.value.isCollected = false
+    })
+
+    if (isCollectedResponse.data.code === 200) {
+      const groupId = isCollectedResponse.data.data
+      
+      if (groupId !== null) {
+        // 已收藏，记录收藏状态和分组ID
+        collectData.value.isCollected = true
+        currentCollectedGroupId.value = groupId
+      } else {
+        // 未收藏
+        collectData.value.isCollected = false
+        currentCollectedGroupId.value = null
+      }
     }
 
   } catch (error) {
@@ -529,6 +542,7 @@ const loadCollectInfo = async () => {
       isCollected: false,
       collectCount: 0
     }
+    currentCollectedGroupId.value = null
   }
 }
 
