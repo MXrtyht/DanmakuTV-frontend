@@ -1,54 +1,14 @@
 <template>
   <el-container class="main-container">
     <!-- 左侧分组栏 -->
-    <el-aside
-      width="280px"
-      class="left-sidebar"
-    >
-      <!-- 添加收藏分组输入框 -->
-      <div class="add-group-container">
-        <el-input
-          v-model="newGroupName"
-          placeholder="输入收藏分组名称"
-          class="group-input"
-          @keyup.enter="addGroup"
-        />
-        <el-button
-          type="primary"
-          @click="addGroup"
-          :disabled="!newGroupName.trim()"
-        >
-          添加分组
-        </el-button>
-      </div>
-
-      <!-- 分组菜单 -->
-      <el-menu
-        :default-active="activeGroupIndex?.toString()"
-        class="group-menu"
-      >
-        <el-menu-item
-          v-for="(group, index) in groupList"
-          :key="index"
-          :index="index.toString()"
-          class="custom-group"
-          @click="selectGroup(index)"
-          :class="{ 'active': activeGroupIndex === index }"
-        >
-          <span class="group-text">{{ group.name }}</span>
-          <!-- 只有自定义分组才显示删除按钮 -->
-          <el-button
-            v-show="group.id !== 1"
-            class="delete-btn"
-            type="danger"
-            size="small"
-            @click.stop="removeGroup(index)"
-          >
-            删除
-          </el-button>
-        </el-menu-item>
-      </el-menu>
-    </el-aside>
+    <GroupSidebar
+      :group-list="groupList"
+      :active-group-index="activeGroupIndex"
+      placeholder="输入收藏分组名称"
+      @add-group="addGroup"
+      @remove-group="removeGroup"
+      @select-group="selectGroup"
+    />
 
     <!-- 右侧视频列表 -->
     <el-main class="right-content">
@@ -85,6 +45,7 @@
 
 <script setup lang="ts">
 import VideoCard from '@/components/videoCard/VideoCard.vue'
+import GroupSidebar from '@/components/GroupSidebar/GroupSidebar.vue'
 import type { UserProfile } from '@/types/entity/user'
 import type { VideoCardInfo, VideoData } from '@/types/entity/video'
 import type { CollectionGroup, VideoCollect } from '@/types/entity/videoCollect'
@@ -102,7 +63,6 @@ const USER_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 
 const groupList = ref<CollectionGroup[]>([])
 const activeGroupIndex = ref<number | null>(null)
-const newGroupName = ref('')
 
 // 视频相关数据
 const videoList = ref<VideoCardInfo[]>([])
@@ -287,13 +247,9 @@ const selectGroup = async (index: number) => {
 
 
 // 添加收藏分组
-const addGroup = async () => {
-  if (!newGroupName.value.trim()) {
-    return
-  }
-
+const addGroup = async (groupName: string) => {
   try {
-    const response = await request.post(`${INTERACTION_SERVICE_URL}/video/add-collection-group`, newGroupName.value.trim(), {
+    const response = await request.post(`${INTERACTION_SERVICE_URL}/video/add-collection-group`, groupName, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -305,7 +261,7 @@ const addGroup = async () => {
     }
 
     ElMessage.success('收藏分组创建成功')
-    newGroupName.value = ''
+    // 注意：不再需要清空 newGroupName，因为组件内部会处理
 
     // 重新加载分组列表
     await loadGroups()
@@ -358,65 +314,6 @@ onMounted(() => {
   background-color: #f5f5f5;
 }
 
-.left-sidebar {
-  background-color: #fff;
-  border-right: 1px solid #e6e6e6;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.add-group-container {
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.group-input {
-  width: 100%;
-}
-
-.group-menu {
-  border: none;
-}
-
-.custom-group {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  border-radius: 8px;
-  border: 1px solid #e6e6e6;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.custom-group:hover {
-  border-color: #409EFF;
-  background-color: #f0f9ff;
-}
-
-.custom-group.active {
-  border-color: #409EFF;
-  background-color: #e6f7ff;
-}
-
-.group-text {
-  flex: 1;
-  font-size: 14px;
-  color: #333;
-}
-
-.delete-btn {
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.custom-group:hover .delete-btn {
-  opacity: 1;
-}
-
 .right-content {
   padding: 20px;
   background-color: #fff;
@@ -434,11 +331,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .main-container {
     flex-direction: column;
-  }
-
-  .left-sidebar {
-    width: 100% !important;
-    height: auto;
   }
 }
 </style>
