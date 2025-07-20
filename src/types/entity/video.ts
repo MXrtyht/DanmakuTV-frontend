@@ -1,8 +1,3 @@
-export interface VideoTag{
-  id:number
-  name:string
-}
-
 export interface VideoData {
   id: number
   userId: string
@@ -12,7 +7,7 @@ export interface VideoData {
   type: boolean
   duration: number
   area: number
-  tags: VideoTag[]
+  tags: string[]
   createAt: string
   updateAt: string
 }

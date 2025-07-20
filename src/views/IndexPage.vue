@@ -68,7 +68,7 @@ import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import type {VideoVO} from '@/types/entity/video'
+import type { VideoVO } from '@/types/entity/video'
 import type { UserInfo } from '@/types/entity/user'
 
 const BASE_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API

@@ -2,7 +2,7 @@
   <div class="activity-page">
 
     <!-- 动态列表 -->
-    <div class="activity-list">
+    <div>
       <el-card
         v-for="activity in activities"
         :key="activity.id.toString()"
@@ -196,10 +196,6 @@ onMounted(() => {
   margin-bottom: 24px;
   display: flex;
   justify-content: center;
-}
-
-.activity-list {
-  space-y: 16px;
 }
 
 .activity-card {

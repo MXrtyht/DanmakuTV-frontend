@@ -185,16 +185,12 @@ const goHome = () => {
 
 // 投稿处理
 const handleUpload = () => {
-  console.log('跳转到投稿页面')
-  ElMessage.info('跳转到投稿页面')
-  // TODO: 跳转到投稿页面
+  router.push('/home/uploadVideo')
 }
 
 // 历史处理
 const handleHistory = () => {
-  console.log('跳转到历史页面')
-  ElMessage.info('跳转到历史页面')
-  // TODO: 跳转到历史页面
+  router.push('/history')
 }
 
 // 收藏处理

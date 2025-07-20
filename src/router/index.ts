@@ -5,12 +5,14 @@ const Index = () => import('../views/IndexPage.vue')
 const Login = () => import('../views/LoginPage.vue')
 const Register = () => import('../views/RegisterPage.vue')
 const HomePage = () => import('../views/HomePage.vue')
-const HomepageLayout = () => import('@/layouts/HomePageLayout.vue')
+const HomepageLayout = () => import('@/layouts/HomepageLayout.vue')
 const HomeFollowPage = () => import('@/views/HomeFollowPage.vue')
 const HomeEditPage = () => import('../views/HomeEditPage.vue')
 const HomeFanPage = () => import('@/views/HomeFanPage.vue')
 const HomeCollectVidelPage = () => import('@/views/HomeCollectVideoPage.vue')
 const HomeMomentsPage = () => import('@/views/HomeMomentsPage.vue')
+const HomeUploadVideoPage = () => import('@/views/HomeUploadVideoPage.vue')
+const HistoryPage = () => import('@/views/HistoryPage.vue')
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -35,6 +37,12 @@ const router = createRouter({
           name: 'video',
           meta: { requestAuth: true },
         },
+        {
+          path: '/history',
+          component: HistoryPage,
+          name: 'history',
+          meta: { requestAuth: true },
+        }
       ],
     },
 
@@ -66,6 +74,7 @@ const router = createRouter({
         { path: 'fan', component: HomeFanPage },
         { path: 'collect', component: HomeCollectVidelPage },
         { path: 'moment', component: HomeMomentsPage},
+        { path: 'uploadVideo', component: HomeUploadVideoPage },
       ],
     },
     {
