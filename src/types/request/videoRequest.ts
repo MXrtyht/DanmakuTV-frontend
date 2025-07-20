@@ -1,5 +1,3 @@
-import type {VideoTag} from '@/types/entity/video'
-
 // 获取用户所有视频
 export interface GetUserAllVideoRequest{
   page:number
@@ -15,7 +13,7 @@ export interface UploadVideoRequest {
   type:boolean
   duration:number
   area:number
-  tags: VideoTag[]
+  tags: string[]
   description: string,
 }
 

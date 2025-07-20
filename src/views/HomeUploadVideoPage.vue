@@ -28,7 +28,7 @@
               :before-upload="beforeUpload"
               accept="video/*"
             >
-              <div v-if="!formData.VideoFile" class="upload-dragger-content">
+              <div v-if="!formData.videoFile" class="upload-dragger-content">
                 <el-icon class="upload-icon"><UploadFilled /></el-icon>
                 <div class="upload-text">
                   <p>将视频文件拖到此处，或<em>点击上传</em></p>
@@ -41,8 +41,8 @@
                 <div class="file-info">
                   <el-icon class="file-icon"><VideoPlay /></el-icon>
                   <div class="file-details">
-                    <div class="file-name">{{ formData.VideoFile?.name || '未上传文件' }}</div>
-                    <div class="file-size">{{ formData.VideoFile?formatFileSize(formData.VideoFile.size):'0KB' }}</div>
+                    <div class="file-name">{{ formData.videoFile?.name || '未上传文件' }}</div>
+                    <div class="file-size">{{ formData.videoFile?formatFileSize(formData.videoFile.size):'0KB' }}</div>
                   </div>
                   <el-button
                     type="danger"
@@ -165,7 +165,7 @@
         <el-form-item label="视频标签" required>
           <div class="tags-container">
             <el-tag
-              v-for="tag in formData.m_tags"
+              v-for="tag in formData.tags"
               :key="tag"
               closable
               @close="removeTag(tag)"
@@ -205,7 +205,7 @@
               type="primary"
               @click="submitForm"
               :loading="submitting"
-              :disabled="!formData.videoUrl || !formData.coverUrl"
+              :disabled="!formData.videoFile || !formData.coverFile"
             >
               {{ submitting ? '上传中...' : '提交上传' }}
             </el-button>
@@ -226,7 +226,7 @@ import {
   Close,
   Plus
 } from '@element-plus/icons-vue'
-import type { UploadVideoRequest } from '@/types/request/videoRequest'
+// import type { UploadVideoRequest } from '@/types/request/videoRequest'
 import type { UploadFile } from 'element-plus'
 import axios from 'axios'
 import request from '@/utils/request'
@@ -254,26 +254,29 @@ const coverPreviewUrl = ref('')
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
 const BASE_VIDEO_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API;
 
-interface MyuploadFile extends UploadVideoRequest {
-  VideoFile?:UploadFile
-  coverFile?:UploadFile
-  m_tags?: string[]
+interface uploadFormData{
+  videoFile?: UploadFile, // 上传的视频文件
+  coverFile?: UploadFile, // 上传的封面文件
+  userId: number, // 这个值可以为任意
+  title: string,
+  description: string,
+  duration: number, // 视频时长，单位秒
+  type: boolean,
+  area: number,
+  tags: string[],
 }
 
 // 表单数据
-const formData = reactive<MyuploadFile>({
-  VideoFile: undefined, // 上传的视频文件
+const formData = reactive<uploadFormData>({
+  videoFile: undefined, // 上传的视频文件
   coverFile: undefined, // 上传的封面文件
   userId: 1, // 这个值可以为任意
-  videoUrl: '',
-  coverUrl: '',
   title: '',
   description: '',
   duration: 0, // 视频时长，单位秒
   type: true,
   area: 0,
   tags: [],
-  m_tags: []
 })
 
 // 视频分区选项 临时数据
@@ -375,12 +378,12 @@ const handleCoverChange = (file:UploadFile) => {
 
 const removeFile = (type:string) => {
   if (type === 'video') {
-    formData.videoUrl = ''
+    formData.videoFile = undefined
     uploadProgress.value = 0
     uploadStatus.value = ''
     uploadRef.value.clearFiles()
   } else if (type === 'cover') {
-    formData.coverUrl = ''
+    formData.coverFile = undefined
     if (coverPreviewUrl.value) {
       URL.revokeObjectURL(coverPreviewUrl.value)
       coverPreviewUrl.value = ''
@@ -402,27 +405,27 @@ const showTagInput = () => {
 
 const handleTagInputConfirm = () => {
   const tag = tagInputValue.value.trim()
-  if(formData.m_tags===undefined){
+  if(formData.tags===undefined){
     return
   }
-  if (tag && !formData.m_tags.includes(tag)) {
+  if (tag && !formData.tags.includes(tag)) {
     if (tag.length > 20) {
       ElMessage.warning('标签长度不能超过20个字符')
       return
     }
-    formData.m_tags.push(tag)
+    formData.tags.push(tag)
   }
   tagInputVisible.value = false
   tagInputValue.value = ''
 }
 
 const removeTag = (tag:string) => {
-  if(formData.m_tags===undefined){
+  if(formData.tags===undefined){
     return
   }
-  const index = formData.m_tags.indexOf(tag)
+  const index = formData.tags.indexOf(tag)
   if (index > -1) {
-    formData.m_tags.splice(index, 1)
+    formData.tags.splice(index, 1)
   }
 }
 
@@ -433,8 +436,8 @@ const resetForm = () => {
     type: 'warning'
   }).then(() => {
     formRef.value.resetFields()
-    formData.videoUrl = ''
-    formData.coverUrl = ''
+    formData.videoFile = undefined
+    formData.coverFile = undefined
     formData.tags = []
     uploadProgress.value = 0
     uploadStatus.value = ''
@@ -449,8 +452,12 @@ const resetForm = () => {
 }
 
 const submitForm = async () => {
-  if (!formData.videoUrl) {
+  if (!formData.videoFile) {
     ElMessage.error('请先选择视频文件')
+    return
+  }
+  if (!formData.coverFile) {
+    ElMessage.error('请先选择封面文件')
     return
   }
 
@@ -488,14 +495,7 @@ const submitForm = async () => {
 const loadData = async () => {
   try {
     // 获取用户信息
-    const videoTags = await request.get(`${BASE_VIDEO_URL}/video/tags`)
     const videoAreas = await request.get(`${BASE_VIDEO_URL}/video/area`)
-    // TODO 写入到formData.tag并映射到formData.m_tag
-    if (videoTags.data.code !== 200||!videoTags.data.data) {
-      console.error('获取视频标签失败:', videoTags.data.message)
-      ElMessage.error('获取视频标签失败')
-      return
-    }
     // TODO 写入到formData.area
     if (videoAreas.data.code !== 200||!videoAreas.data.data) {
       console.error('获取视频分区失败:', videoAreas.data.message)
