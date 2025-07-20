@@ -111,12 +111,15 @@
 
             <el-button
               class="action-btn"
+              :class="{ 'collected': collectData.isCollected }"
               size="large"
               @click="handleFavorite"
             >
-              <el-icon><Collection /></el-icon>
-              <span>收藏</span>
-              <span class="count">456</span>
+              <el-icon>
+                <Collection :class="{ 'collected-icon': collectData.isCollected }" />
+              </el-icon>
+              <span>{{ collectData.isCollected ? '已收藏' : '收藏' }}</span>
+              <span class="count">{{ formatCount(collectData.collectCount) }}</span>
             </el-button>
           </div>
 
@@ -167,6 +170,56 @@
         </el-card>
       </el-col>
     </el-row>
+
+        <!-- 收藏分组选择弹窗 -->
+<el-dialog
+  v-model="collectDialogVisible"
+  title="选择收藏分组"
+  width="450px"
+  :before-close="cancelCollect"
+>
+  <div class="collect-dialog-content">
+    <div class="group-selection">
+      <div
+        v-for="group in collectionGroups"
+        :key="group.id"
+        class="group-item"
+        :class="{ 'selected': selectedGroupId === group.id }"
+        @click="selectedGroupId = group.id"
+      >
+        <el-radio 
+          :model-value="selectedGroupId" 
+          :value="group.id" 
+          class="group-radio"
+          @change="selectedGroupId = group.id"
+        >
+          <div class="group-content">
+            <span class="group-name">{{ group.name }}</span>
+            <span v-if="group.userId === null" class="default-tag">默认</span>
+          </div>
+        </el-radio>
+      </div>
+    </div>
+
+    <div class="empty-state" v-if="collectionGroups.length === 0">
+      <el-empty description="暂无收藏分组，请先创建分组" />
+    </div>
+  </div>
+
+  <template #footer>
+    <div class="dialog-footer">
+      <el-button @click="cancelCollect">取消</el-button>
+      <el-button
+        type="primary"
+        :loading="collectLoading"
+        :disabled="!selectedGroupId || collectionGroups.length === 0"
+        @click="confirmCollect"
+      >
+        确认收藏
+      </el-button>
+    </div>
+  </template>
+</el-dialog>
   </div>
 </template>
 
@@ -177,6 +230,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import request from '@/utils/request'
 import type { VideoData } from '@/types/entity/video'
+import type { CollectionGroup, VideoCollect } from '@/types/entity/videoCollect'
 
 const route = useRoute()
 const videoId = route.params.videoId
@@ -213,6 +267,18 @@ const likeData = ref({
   likeCount: 0
 })
 const likeLoading = ref(false)
+
+// 收藏相关状态
+const collectDialogVisible = ref(false)
+const collectionGroups = ref<CollectionGroup[]>([])
+const selectedGroupId = ref<number | null>(null)
+const collectLoading = ref(false)
+
+// 收藏数据状态
+const collectData = ref({
+  isCollected: false,
+  collectCount: 0
+})
 
 // 加载点赞信息
 const loadLikeInfo = async () => {
@@ -286,14 +352,83 @@ const handleLike = async() => {
   }
 }
 
+// 获取收藏分组列表
+const loadCollectionGroups = async () => {
+  try {
+    const response = await request.get(`${INTERACTION_SERVICE_URL}/video/collection-groups`)
+    
+    if (response.data.code === 200) {
+      collectionGroups.value = response.data.data || []
+      // 默认选中第一个分组（通常是默认分组）
+      if (collectionGroups.value.length > 0) {
+        selectedGroupId.value = collectionGroups.value[0].id
+      }
+    } else {
+      throw new Error(response.data.message || '获取收藏分组失败')
+    }
+  } catch (error) {
+    console.error('获取收藏分组失败:', error)
+    ElMessage.error('获取收藏分组失败')
+  }
+}
+
 const handleCoin = () => {
   console.log('投币')
   ElMessage.success('投币成功')
 }
 
-const handleFavorite = () => {
-  console.log('收藏')
-  ElMessage.success('收藏成功')
+const handleFavorite = async () => {
+  // 打开收藏分组选择弹窗
+  collectDialogVisible.value = true
+  
+  // 加载收藏分组列表
+  await loadCollectionGroups()
+}
+
+// 确认收藏
+// 修改 confirmCollect 函数
+const confirmCollect = async () => {
+  if (!selectedGroupId.value) {
+    ElMessage.warning('请选择收藏分组')
+    return
+  }
+
+  try {
+    collectLoading.value = true
+
+    const addVideoCollectionDTO = {
+      userId: 0, // 后端会自动替换为当前用户ID
+      videoId: Number(videoId),
+      groupId: selectedGroupId.value,
+      collectedAt: new Date()
+    }
+
+    const response = await request.post(`${INTERACTION_SERVICE_URL}/video/add-collection`, addVideoCollectionDTO)
+
+    if (response.data.code === 200) {
+      ElMessage.success('收藏成功')
+      collectDialogVisible.value = false
+      
+      // 收藏成功后更新状态
+      collectData.value.isCollected = true
+      collectData.value.collectCount += 1
+      
+    } else {
+      throw new Error(response.data.message || '收藏失败')
+    }
+
+  } catch (error) {
+    console.error('收藏失败:', error)
+    ElMessage.error('收藏失败，请重试')
+  } finally {
+    collectLoading.value = false
+  }
+}
+
+// 取消收藏弹窗
+const cancelCollect = () => {
+  collectDialogVisible.value = false
+  selectedGroupId.value = null
 }
 
 // 视频分区映射
@@ -350,6 +485,61 @@ const buildVideoStreamUrl = (videoUrl: string): string => {
   return `${MINIO_SERVICE_URL}/upload/video-slice/${bucketName}/${videoUrl}`
 }
 
+// 加载收藏信息
+const loadCollectInfo = async () => {
+  try {
+    // 获取收藏数量
+    const countResponse = await request.get(`${INTERACTION_SERVICE_URL}/video/video-collect-count`, {
+      params: {
+        videoId: videoId
+      }
+    })
+
+    if (countResponse.data.code === 200) {
+      collectData.value.collectCount = countResponse.data.data || 0
+    }
+
+    // 检查当前用户是否已收藏（通过获取用户的收藏列表来判断）
+    try {
+      const userCollectionsResponse = await request.get(`${INTERACTION_SERVICE_URL}/video/collected-videos`)
+      
+      if (userCollectionsResponse.data.code === 200) {
+        const allCollections = userCollectionsResponse.data.data || []
+        console.log(allCollections)
+
+        // 检查当前视频是否在用户的收藏列表中
+        const isCollected = allCollections.some((group: CollectionGroup) => 
+          group.videoIdList?.some((collection: VideoCollect) => 
+            collection.videoId === Number(videoId)
+          )
+        )
+        
+        collectData.value.isCollected = isCollected
+      }
+    } catch (error) {
+      console.log(error)
+      // 如果用户未登录或获取失败，默认为未收藏
+      collectData.value.isCollected = false
+    }
+
+  } catch (error) {
+    console.error('获取收藏信息失败:', error)
+    // 失败时使用默认值
+    collectData.value = {
+      isCollected: false,
+      collectCount: 0
+    }
+  }
+}
+
+// 格式化数量显示
+const formatCount = (count: number): string => {
+  if (count < 1000) return count.toString()
+  if (count < 10000) return (count / 1000).toFixed(1) + 'k'
+  if (count < 100000000) return (count / 10000).toFixed(1) + '万'
+  return (count / 100000000).toFixed(1) + '亿'
+}
+
 // 加载视频信息
 const loadVideoInfo = async () => {
   try {
@@ -358,8 +548,11 @@ const loadVideoInfo = async () => {
 
     console.log('加载视频信息:', videoId)
     
-    // 加载点赞信息
-    loadLikeInfo()
+    // 并行加载点赞信息和收藏信息
+    const [, ] = await Promise.all([
+      loadLikeInfo(),
+      loadCollectInfo() // 加载收藏信息
+    ])
 
     // 调用后端接口获取视频信息
     const response = await request.get(`${VIDEO_SERVER_URL}/video/id`, {
@@ -563,18 +756,177 @@ onMounted(() => {
   margin-left: 4px;
 }
 
+.collect-dialog-content {
+  padding: 10px 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.group-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--el-border-color);
+  cursor: pointer;
+  transition: all 0.3s;
+  background: var(--el-fill-color-blank);
+}
+
+.group-item:hover {
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.group-item.selected {
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.group-radio {
+  width: 100%;
+  margin: 0;
+}
+
+.group-radio .el-radio__input {
+  margin-right: 12px;
+}
+
+.group-radio .el-radio__label {
+  width: 100%;
+  padding: 0;
+}
+
+.group-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.group-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+}
+
+.default-tag {
+  font-size: 12px;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--el-color-primary-light-7);
+  font-weight: normal;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+/* 选中状态的单选框样式 */
+.group-item.selected .el-radio__input.is-checked .el-radio__inner {
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+}
+
+.group-item.selected .el-radio__input.is-checked + .el-radio__label {
+  color: var(--el-text-color-primary);
+}
+
+/* 弹窗整体样式调整 */
+.el-dialog__header {
+  padding: 20px 20px 10px 20px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.el-dialog__body {
+  padding: 20px;
+}
+
+.el-dialog__footer {
+  padding: 15px 20px 20px 20px;
+}
+
+/* 滚动条样式 */
+.collect-dialog-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.collect-dialog-content::-webkit-scrollbar-track {
+  background: var(--el-fill-color-lighter);
+  border-radius: 3px;
+}
+
+.collect-dialog-content::-webkit-scrollbar-thumb {
+  background: var(--el-border-color-dark);
+  border-radius: 3px;
+}
+
+.collect-dialog-content::-webkit-scrollbar-thumb:hover {
+  background: var(--el-text-color-placeholder);
+}
+
+/* 已收藏状态 */
+.action-btn.collected {
+  border-color: var(--el-color-warning);
+  background: var(--el-color-warning-light-9);
+  color: var(--el-color-warning);
+}
+
+.collected-icon {
+  color: var(--el-color-warning);
+}
+
+/* 已点赞状态 */
+.action-btn.liked {
+  border-color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+}
+
+.liked-icon {
+  color: var(--el-color-primary);
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .video-page {
-    padding: 10px;
+  .el-dialog {
+    width: 90% !important;
+    margin: 0 5%;
   }
-
-  .video-player {
-    height: 250px;
+  
+  .group-item {
+    padding: 16px 12px;
   }
-
-  .video-title h2 {
+  
+  .group-name {
     font-size: 16px;
   }
+  
+  .collect-dialog-content {
+    max-height: 300px;
+  }
+}
+
+/* 点击动画效果 */
+.group-item:active {
+  transform: scale(0.98);
 }
 </style>
