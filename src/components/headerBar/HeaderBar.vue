@@ -10,17 +10,14 @@
     >
       <!-- 左侧 Logo -->
       <div class="left-section">
-        <el-menu-item
-          index="logo"
-          class="logo-item"
-          @click="goHome"
-        >
+        <el-menu-item index="logo" class="logo-item" @click="goHome">
           <span class="logo-text">DanmakuTV</span>
         </el-menu-item>
       </div>
 
       <!-- 中间搜索框 -->
-      <div class="center-section">
+      <!-- 中间搜索框（通过 showSearch 控制） -->
+      <div class="center-section" v-if="showSearch">
         <el-input
           v-model="searchKeyword"
           placeholder="搜索视频、UP主"
@@ -29,28 +26,17 @@
           size="default"
           @keyup.enter="handleSearch"
         >
-          <template #append>
-            <el-button
-              @click="handleSearch"
-              :icon="Search"
-            />
-          </template>
+          <template #append> <el-button @click="handleSearch" :icon="Search" /> </template>
         </el-input>
       </div>
+      <!-- 搜索框占位（当不显示搜索框时） -->
+      <div class="center-section placeholder" v-else></div>
 
       <!-- 右侧导航项 -->
       <div class="right-section">
         <!-- 用户头像 -->
-        <el-dropdown
-          trigger="click"
-          @command="handleCommand"
-        >
-          <el-avatar
-            :size="36"
-            :src="userInfo.avatar"
-            class="user-avatar"
-            style="cursor: pointer;"
-          >
+        <el-dropdown trigger="click" @command="handleCommand">
+          <el-avatar :size="36" :src="userInfo.avatar" class="user-avatar" style="cursor: pointer">
             <el-icon>
               <User />
             </el-icon>
@@ -59,49 +45,28 @@
             <el-dropdown-menu>
               <el-dropdown-item command="profile">个人中心</el-dropdown-item>
               <el-dropdown-item command="settings">设置</el-dropdown-item>
-              <el-dropdown-item
-                divided
-                command="logout"
-              >退出登录</el-dropdown-item>
+              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
 
         <!-- 动态 -->
-        <el-menu-item
-          index="dynamic"
-          class="nav-menu-item"
-          @click="handleDynamic"
-        >
+        <el-menu-item index="dynamic" class="nav-menu-item" @click="handleDynamic">
           <span>动态</span>
         </el-menu-item>
 
         <!-- 收藏 -->
-        <el-menu-item
-          index="favorite"
-          class="nav-menu-item"
-          @click="handleFavorite"
-        >
+        <el-menu-item index="favorite" class="nav-menu-item" @click="handleFavorite">
           <span>收藏</span>
         </el-menu-item>
 
         <!-- 历史 -->
-        <el-menu-item
-          index="history"
-          class="nav-menu-item"
-          @click="handleHistory"
-        >
+        <el-menu-item index="history" class="nav-menu-item" @click="handleHistory">
           <span>历史</span>
         </el-menu-item>
 
         <!-- 投稿按钮 -->
-        <el-button
-          type="primary"
-          class="upload-btn"
-          size="default"
-          round
-          @click="handleUpload"
-        >
+        <el-button type="primary" class="upload-btn" size="default" round @click="handleUpload">
           投稿
         </el-button>
       </div>
@@ -112,7 +77,7 @@
 <script setup lang="ts">
 import { Search, User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { onMounted, ref,watch } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
 import type { UserInfo } from '@/types/entity/user'
@@ -133,18 +98,26 @@ interface FrontendUserInfo {
 
 const userInfo = ref<FrontendUserInfo>({
   avatar: '',
-  name: ''
+  name: '',
 })
 
-const props=defineProps({
+const props = defineProps({
   sticky: {
     type: Boolean,
-    default: true // 默认固定
-} })
-
-watch(() => props.sticky, (val) => {
-  console.log('sticky prop changed:', val) // 确认值是否正确
+    default: true, // 默认固定
+  },
+  showSearch: {
+    type: Boolean,
+    default: true, // 默认显示搜索框
+  },
 })
+
+watch(
+  () => props.sticky,
+  (val) => {
+    console.log('sticky prop changed:', val) // 确认值是否正确
+  },
+)
 
 // 加载用户信息
 const loadUserInfo = async () => {
@@ -159,10 +132,8 @@ const loadUserInfo = async () => {
 
     const backendUserInfo = userInfoRes.data.data as UserInfo
     userInfo.value = {
-      avatar: backendUserInfo.avatar
-        ? `${BASE_MINIO_URL}/avatar/${backendUserInfo.avatar}`
-        : '',
-      name: backendUserInfo.nickname
+      avatar: backendUserInfo.avatar ? `${BASE_MINIO_URL}/avatar/${backendUserInfo.avatar}` : '',
+      name: backendUserInfo.nickname,
     }
   } catch (error) {
     console.error('获取用户信息失败:', error)
@@ -279,6 +250,15 @@ onMounted(() => {
   margin: 0 40px;
 }
 
+.center-section.placeholder {
+  /* 保持与搜索框相同的尺寸 */
+  width: 100%;
+  max-width: 500px;
+  height: 40px; /* 与输入框高度一致 */
+  margin: 0 40px; /* 透明占位，不干扰布局 */
+  visibility: hidden;
+}
+
 .search-input {
   width: 100%;
   max-width: 500px;
@@ -329,7 +309,7 @@ onMounted(() => {
 }
 
 /* 移除菜单项的默认下划线 */
-.el-menu--horizontal>.el-menu-item {
+.el-menu--horizontal > .el-menu-item {
   border-bottom: none !important;
 }
 

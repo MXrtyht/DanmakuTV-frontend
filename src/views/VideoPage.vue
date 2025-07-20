@@ -122,14 +122,14 @@
             class="video-tags"
           >
             <span class="tags-label">标签：</span>
-            <el-tag
-              v-for="tag in videoData.tags"
-              :key="tag.id"
-              class="tag-item"
-              size="small"
-            >
-              {{ tag.name }}
-            </el-tag>
+              <el-tag
+                v-for="(tag, index) in videoData.tags"
+                :key="index"
+                class="tag-item"
+                size="small"
+              >
+                {{ tag }}
+              </el-tag>
           </div>
 
           <!-- 视频描述 -->
@@ -283,9 +283,9 @@ const loadVideoInfo = async () => {
   try {
     loading.value = true
     error.value = false
-    
+
     console.log('加载视频信息:', videoId)
-    
+
     // 调用后端接口获取视频信息
     const response = await request.get(`${VIDEO_SERVER_URL}/video/id`, {
       params: {
@@ -307,7 +307,7 @@ const loadVideoInfo = async () => {
       videoStreamUrl.value = buildVideoStreamUrl(data.videoUrl)
       console.log('视频流URL:', videoStreamUrl.value)
     }
-    
+
   } catch (err) {
     console.error('加载视频信息失败:', err)
     error.value = true
