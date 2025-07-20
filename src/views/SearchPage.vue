@@ -194,12 +194,12 @@ const handleSearch = async () => {
   try {
     // 调用搜索API
     searchResults.value = mockSearchResults
-    const response = await request.get('')
-    if(response.data.code !== 200) {
-      console.log('搜索失败:', response.data.message)
-      ElMessage.error('搜索失败，请稍后再试')
-      return
-    }
+    // const response = await request.get('')
+    // if(response.data.code !== 200) {
+    //   console.log('搜索失败:', response.data.message)
+    //   ElMessage.error('搜索失败，请稍后再试')
+    //   return
+    // }
   } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response) {
           console.error('注册失败:', error.response.data.message);
@@ -394,7 +394,7 @@ onMounted(() => {
     handleSearch()
   } else {
     // 如果没有搜索参数，加载默认示例数据
-    searchKeyword.value = 'Vue'
+    searchKeyword.value = ''
     handleSearch()
   }
 })

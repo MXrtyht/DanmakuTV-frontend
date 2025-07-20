@@ -143,9 +143,12 @@ const loadUserInfo = async () => {
 // 搜索处理
 const handleSearch = () => {
   if (searchKeyword.value.trim()) {
-    console.log('搜索:', searchKeyword.value)
-    ElMessage.info(`搜索: ${searchKeyword.value}`)
-    // TODO: 实现搜索功能
+    router.push({
+      path: '/search',
+      query: {
+        q: searchKeyword.value.trim()
+      } // 通过 URL 参数传递关键词
+    });
   }
 }
 
