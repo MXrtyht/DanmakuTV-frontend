@@ -21,7 +21,7 @@
         <!-- UP主信息 -->
         <div class="uploader-info">
           <el-avatar
-            :src="`${BASE_MINIO_URL}/cover/${uploaderAvatar}`"
+            :src="`${BASE_MINIO_URL}/avatar/${uploaderAvatar}`"
             :size="32"
             class="uploader-avatar"
           />

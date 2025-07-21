@@ -164,13 +164,13 @@ const loadVideosByGroup = async (groupId: number) => {
       return {
         video: {
           ...videoInfo,
-          // 拼接完整的封面URL
+          // 不用拼接了, 传入objectName, videoCard会拼接
           coverUrl: videoInfo.coverUrl ?
-            `${BASE_MINIO_URL}/cover/${videoInfo.coverUrl}` : ''
+            `${videoInfo.coverUrl}` : ''
         },
         uploaderName: userInfo?.nickname || `UP主_${videoInfo.userId}`,
         uploaderAvatar: userInfo?.avatar ?
-          `${BASE_MINIO_URL}/avatar/${userInfo.avatar}` : '',
+          `${userInfo.avatar}` : '',
         playCount: Math.floor(Math.random() * 100000) // 模拟播放量
       } as VideoCardInfo
     }).filter(item => item.video.title !== '视频不存在或已删除') // 过滤掉无效视频
