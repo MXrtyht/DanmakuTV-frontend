@@ -124,7 +124,7 @@ defineExpose({
 
 .video-player {
   width: 100%;
-  height: 400px;
+  aspect-ratio: 16 / 9;
   background: #000;
   border-radius: 8px;
   overflow: hidden;

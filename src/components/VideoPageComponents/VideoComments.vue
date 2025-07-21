@@ -167,39 +167,6 @@ const userCache = ref<Map<number, { nickname: string, avatar: string }>>(new Map
 // 图标
 const deleteIcon = Delete
 
-// 获取用户信息
-const getUserInfo = async (userId: number): Promise<{ nickname: string, avatar: string }> => {
-  // 先检查缓存
-  if (userCache.value.has(userId)) {
-    return userCache.value.get(userId)!
-  }
-
-  try {
-    const response = await request.get(`${USER_SERVER_URL}/user/userId`, {
-      params: { userId }
-    })
-
-    if (response.data.code === 200 && response.data.data) {
-      const userInfo = {
-        nickname: response.data.data.nickname || `用户${userId}`,
-        avatar: response.data.data.avatar ? 
-          `${BASE_MINIO_URL}/avatar/${response.data.data.avatar}` : ''
-      }
-      
-      // 缓存用户信息
-      userCache.value.set(userId, userInfo)
-      return userInfo
-    }
-  } catch (error) {
-    console.error(`获取用户${userId}信息失败:`, error)
-  }
-
-  // 返回默认信息
-  const defaultInfo = { nickname: `用户${userId}`, avatar: '' }
-  userCache.value.set(userId, defaultInfo)
-  return defaultInfo
-}
-
 // 批量获取用户信息
 const getBatchUserInfo = async (userIds: number[]): Promise<Map<number, { nickname: string, avatar: string }>> => {
   const userInfoMap = new Map<number, { nickname: string, avatar: string }>()

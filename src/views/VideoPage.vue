@@ -1,6 +1,6 @@
 <template>
   <div class="video-page">
-    <el-row :gutter="20">
+    <el-row :gutter="24">
       <!-- 主要内容区域 -->
       <el-col :span="18">
         <!-- 视频播放器区域 -->
@@ -34,9 +34,7 @@
           class="sidebar-card"
           shadow="never"
         >
-          <div class="sidebar-placeholder">
-            <el-empty description="相关推荐" />
-          </div>
+        <VideoRecommendations :video-id="videoId" :tags="videoData.tags" />
         </el-card>
       </el-col>
     </el-row>
@@ -110,6 +108,7 @@ import { useRoute } from 'vue-router'
 import VideoPlayer from '../components/VideoPageComponents/VideoPlayer.vue'
 import VideoInfoActions from '../components/VideoPageComponents/VideoInfoActions.vue'
 import VideoComments from '../components/VideoPageComponents/VideoComments.vue'
+import VideoRecommendations from '../components/VideoPageComponents/VideoRecommendations.vue'
 
 
 const route = useRoute()
@@ -442,20 +441,51 @@ onMounted(() => {
 <style scoped>
 .video-page {
   padding: 20px;
-  max-width: 1200px;
+  /* 移除最大宽度限制，让页面可以利用更多空间 */
+  max-width: none;
   margin: 0 auto;
+  /* 设置最小宽度确保在大屏幕上有合理的最小宽度 */
+  min-width: 1200px;
 }
 
-/* 侧边栏 */
+/* 侧边栏包装器 */
+.sidebar-wrapper {
+  /* 让侧边栏可以向右扩展 */
+  width: 100%;
+  max-width: 400px; /* 设置最大宽度避免过宽 */
+  margin-left: auto; /* 如果需要的话可以让侧边栏靠右 */
+}
+
 .sidebar-card {
   position: sticky;
   top: 20px;
+  width: 100%;
+  /* 让卡片内容可以充分利用空间 */
+  min-height: 600px;
 }
 
-.sidebar-placeholder {
-  padding: 40px 0;
+/* 或者更激进的方案：完全利用右侧空间 */
+.video-page {
+  padding: 20px;
+  max-width: 1600px; /* 增加最大宽度 */
+  margin: 0 auto;
+  width: 100%;
 }
 
+/* 响应式：在中等屏幕上调整布局 */
+@media (min-width: 1400px) {
+  .sidebar-wrapper {
+    max-width: 450px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .sidebar-wrapper {
+    max-width: 500px;
+  }
+}
+
+/* 保持原有样式 */
 .collect-dialog-content {
   padding: 10px 0;
   max-height: 400px;
@@ -584,6 +614,17 @@ onMounted(() => {
 }
 
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .video-page {
+    min-width: auto;
+    max-width: 1200px;
+  }
+  
+  .sidebar-wrapper {
+    max-width: 300px;
+  }
+}
+
 @media (max-width: 768px) {
   .el-dialog {
     width: 90% !important;
@@ -600,6 +641,10 @@ onMounted(() => {
 
   .collect-dialog-content {
     max-height: 300px;
+  }
+  
+  .sidebar-wrapper {
+    max-width: none;
   }
 }
 
