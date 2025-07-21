@@ -178,7 +178,7 @@ const loadVideos = async (page: number = 1, isLoadMore: boolean = false) => {
 
     // 处理视频数据
     const processedVideos = records.map((video: VideoVO) => {
-      const userInfo = userInfoMap.get(String(video.userId))
+      const userInfo = userInfoMap.get(video.userId)
 
       return {
         ...video,
