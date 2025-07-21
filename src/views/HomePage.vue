@@ -9,8 +9,8 @@
       <!-- 视频列表 -->
       <el-row :gutter="16">
         <!-- gutter 设置列间距 -->
-        <el-col v-for="video in pageData.records" :key="video.id" :xs="24" :sm="12" :md="8" :lg="6">
-          <VideoCard :video="video" @click="handleCardClick(video)"/>
+        <el-col v-for="video in videoList" :key="video.video.id" :xs="24" :sm="12" :md="8" :lg="6">
+          <VideoCard :video="video.video" :uploader-name="video.uploaderName" :uploader-avatar="video.uploaderAvatar" @click="handleCardClick(video.video)"/>
         </el-col>
       </el-row>
       <!-- 分页控件 -->
@@ -37,8 +37,11 @@ import type { IPage } from '@/types/api/iPage'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import router from '@/router'
+import type { UserInfo } from '@/types/entity/user'
 
 const BASE_VEDIO_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
+const BASE_USER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
+const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
 const videoList = ref<VideoCardInfo[]>([])
 
@@ -57,6 +60,14 @@ const pageData = ref<IPage<VideoData>>({
 // 加载视频数据的方法（替换原有的加载用户数据方法）
 const loadVideos = async () => {
   try {
+    // 个人主页，都是同一个用户
+    const userInfo= await request.get(`${BASE_USER_URL}/user/info`)
+    if (userInfo.data.code !== 200 || !userInfo.data.data) {
+      console.error('获取用户信息失败:', userInfo.data.message)
+      ElMessage.error('获取用户信息失败，请稍后再试')
+      return
+    }
+    const user = userInfo.data.data as UserInfo
     const res = await request.get(`${BASE_VEDIO_URL}/video/all`, {
       params: {
         size: pagination.value.size,
@@ -69,10 +80,16 @@ const loadVideos = async () => {
       return
     }
     pageData.value = res.data.data
+    // console.log('加载视频成功:', pageData.value.records)
     videoList.value = pageData.value.records.map((video) => ({
-      video: video,
+      video: {
+        ...video,
+        coverUrl:`${BASE_MINIO_URL}/cover/${video.coverUrl}`,
+      },
+      uploaderName:user.nickname,
+      uploaderAvatar: `${BASE_MINIO_URL}/avatar/${user.avatar}`
     }))
-    // TODO 获取对应视频的用户和播放信息
+
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
       console.error('注册失败:', error.response.data.message)

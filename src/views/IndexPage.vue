@@ -189,7 +189,7 @@ const loadVideos = async (page: number = 1, isLoadMore: boolean = false) => {
         // 使用真实的用户信息
         uploaderName: userInfo?.nickname || `UP主_${video.userId}`,
         uploaderAvatar: userInfo?.avatar || '',
-        playCount: Math.floor(Math.random() * 100000) // 模拟播放量，实际应该从接口获取
+        playCount: Math.floor(Math.random() * 100000) // TODO 模拟播放量，实际应该从接口获取
       }
     })
 
