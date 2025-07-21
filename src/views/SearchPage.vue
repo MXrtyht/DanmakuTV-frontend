@@ -263,7 +263,7 @@ const mockSearchResults = {
     videos: [
       {
         id: 1,
-        userId: '1',
+        userId: 1,
         videoUrl: 'https://example.com/video1.mp4',
         coverUrl: 'https://via.placeholder.com/300x180/67C23A/ffffff?text=视频1',
         title: 'Vue3 + TypeScript 项目实战教程',
@@ -276,7 +276,7 @@ const mockSearchResults = {
       },
       {
         id: 2,
-        userId: '1',
+        userId: 1,
         videoUrl: 'https://example.com/video2.mp4',
         coverUrl: 'https://via.placeholder.com/300x180/E6A23C/ffffff?text=视频2',
         title: 'ElementUI组件库深度解析',
@@ -289,7 +289,7 @@ const mockSearchResults = {
       },
       {
         id: 3,
-        userId: '1',
+        userId: 1,
         videoUrl: 'https://example.com/video3.mp4',
         coverUrl: 'https://via.placeholder.com/300x180/F56C6C/ffffff?text=视频3',
         title: '前端性能优化实践指南',
@@ -305,7 +305,7 @@ const mockSearchResults = {
   videos: [
     {
       id: 4,
-      userId: '2',
+      userId: 2,
       videoUrl: 'https://example.com/video4.mp4',
       coverUrl: 'https://via.placeholder.com/300x180/909399/ffffff?text=React',
       title: 'React Hooks 完全指南',
@@ -318,7 +318,7 @@ const mockSearchResults = {
     },
     {
       id: 5,
-      userId: '3',
+      userId: 3,
       videoUrl: 'https://example.com/video5.mp4',
       coverUrl: 'https://via.placeholder.com/300x180/E6A23C/ffffff?text=JS',
       title: 'JavaScript 异步编程详解',
@@ -331,7 +331,7 @@ const mockSearchResults = {
     },
     {
       id: 6,
-      userId: '4',
+      userId: 4,
       videoUrl: 'https://example.com/video6.mp4',
       coverUrl: 'https://via.placeholder.com/300x180/F56C6C/ffffff?text=CSS',
       title: 'CSS Grid 布局实战',
@@ -344,7 +344,7 @@ const mockSearchResults = {
     },
     {
       id: 7,
-      userId: '5',
+      userId: 5,
       videoUrl: 'https://example.com/video7.mp4',
       coverUrl: 'https://via.placeholder.com/300x180/67C23A/ffffff?text=Node',
       title: 'Node.js 后端开发入门',
@@ -357,7 +357,7 @@ const mockSearchResults = {
     },
     {
       id: 8,
-      userId: '6',
+      userId: 6,
       videoUrl: 'https://example.com/video8.mp4',
       coverUrl: 'https://via.placeholder.com/300x180/409EFF/ffffff?text=TS',
       title: 'TypeScript 类型系统深入',
@@ -370,7 +370,7 @@ const mockSearchResults = {
     },
     {
       id: 9,
-      userId: '7',
+      userId: 7,
       videoUrl: 'https://example.com/video9.mp4',
       coverUrl: 'https://via.placeholder.com/300x180/909399/ffffff?text=WP',
       title: 'Webpack 5 配置优化指南',

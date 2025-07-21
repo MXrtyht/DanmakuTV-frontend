@@ -117,7 +117,7 @@ interface Emits {
   (e: 'favorite'): void
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 // 视频分区映射

@@ -21,10 +21,6 @@
 
           <!-- 活动内容 -->
           <div class="activity-content">
-            <!-- 活动描述 -->
-            <div class="activity-description">
-              <span class="activity-text">{{ activity.description }}</span>
-            </div>
 
             <!-- 相关内容预览 -->
             <div v-if="activity.video" class="activity-preview">
@@ -77,7 +73,6 @@ const userAvatar=ref('')
 const mockActivities = [
   {
     id: 1,
-    description: '发布了一篇新文章',
     video: {
       title: 'Vue3 开发实践总结',
       description: '分享一些在Vue3项目开发中的经验和心得...',
@@ -87,7 +82,6 @@ const mockActivities = [
   },
   {
     id: 2,
-    description: '赞了这篇文章',
     video: {
       title: 'Element Plus 组件库使用指南',
       description: '详细介绍Element Plus的各种组件使用方法...',
@@ -97,7 +91,6 @@ const mockActivities = [
   },
   {
     id: 3,
-    description: '评论了文章',
     video: {
       title: 'JavaScript异步编程详解',
       description: '很实用的文章，学到了很多新知识！',
