@@ -381,6 +381,15 @@ const loadVideoInfo = async () => {
     error.value = false
 
     console.log('加载视频信息:', videoId)
+    // 添加视频记录
+    const hisResponse = await request.post(`${VIDEO_SERVER_URL}/video/video-views`,videoId,{
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    if (hisResponse.data.code !== 200) {
+      ElMessage.error('添加历史记录失败:', hisResponse.data.data)
+    }
 
     // 并行加载点赞信息和收藏信息
     const [,] = await Promise.all([
@@ -396,6 +405,7 @@ const loadVideoInfo = async () => {
     })
 
     if (response.data.code !== 200) {
+      console.error('获取视频信息失败:', response.data.data)
       throw new Error(response.data.message || '获取视频信息失败')
     }
 
