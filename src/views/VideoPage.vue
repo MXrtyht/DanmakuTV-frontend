@@ -23,6 +23,9 @@
           @coin="handleCoin"
           @favorite="handleFavorite"
         />
+
+        <!-- 评论区域 -->
+        <VideoComments :video-id="videoId" />
       </el-col>
 
       <!-- 侧边栏占位 -->
@@ -106,6 +109,7 @@ import { useRoute } from 'vue-router'
 
 import VideoPlayer from '../components/VideoPageComponents/VideoPlayer.vue'
 import VideoInfoActions from '../components/VideoPageComponents/VideoInfoActions.vue'
+import VideoComments from '../components/VideoPageComponents/VideoComments.vue'
 
 
 const route = useRoute()
