@@ -5,7 +5,7 @@
       <h2 class="page-title">观看历史</h2>
       <div class="header-actions">
         <!-- 清除历史按钮 -->
-         <!--之后看看要不要保留-->
+        <!--之后看看要不要保留-->
         <el-button
           type="danger"
           plain
@@ -15,8 +15,8 @@
           清空历史
         </el-button>
         <!-- 搜索框 -->
-          <!--之后看看要不要保留-->
-          <!-- 这里可以使用handleSearch处理其他逻辑，searchKeyword变换也可以直接过滤 -->
+        <!--之后看看要不要保留-->
+        <!-- 这里可以使用handleSearch处理其他逻辑，searchKeyword变换也可以直接过滤 -->
         <el-input
           v-model="searchKeyword"
           placeholder="搜索历史记录"
@@ -27,19 +27,30 @@
           @input="handleSearch"
         >
           <template #prefix>
-            <el-icon><Search /></el-icon>
+            <el-icon>
+              <Search />
+            </el-icon>
           </template>
         </el-input>
       </div>
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="loading" class="loading-container">
-      <el-skeleton :rows="5" animated />
+    <div
+      v-if="loading"
+      class="loading-container"
+    >
+      <el-skeleton
+        :rows="5"
+        animated
+      />
     </div>
 
     <!-- 历史记录列表 -->
-    <div v-else-if="filteredHistoryData.length > 0" class="history-list">
+    <div
+      v-else-if="filteredHistoryData.length > 0"
+      class="history-list"
+    >
       <!-- 每天的观看记录 -->
       <div
         v-for="dayRecord in filteredHistoryData"
@@ -68,38 +79,46 @@
         <div class="videos-grid">
           <VideoCard
             v-for="video in dayRecord.videos"
-            :key="video.id"
-            :video="video"
+            :key="video.video.id"
+            :video="video.video"
             :uploader-name="video.uploaderName"
             :uploader-avatar="video.uploaderAvatar"
             :play-count="video.playCount"
             class="history-video-card"
-            @click="handleVideoClick(video)"
+            @click="handleVideoClick"
           />
         </div>
       </div>
     </div>
 
     <!-- 空状态 -->
-    <div v-else class="empty-state">
+    <div
+      v-else
+      class="empty-state"
+    >
       <el-empty description="暂无观看历史">
-        <el-button type="primary" @click="goHome">去首页看看</el-button>
+        <el-button
+          type="primary"
+          @click="goHome"
+        >去首页看看</el-button>
       </el-empty>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search } from '@element-plus/icons-vue'
 import VideoCard from '@/components/videoCard/VideoCard.vue'
-import type { VideoVO } from '@/types/entity/video'
+import type { UserProfile } from '@/types/entity/user'
+import type { VideoCardInfo, VideoData } from '@/types/entity/video'
 import request from '@/utils/request'
+import { Search } from '@element-plus/icons-vue'
 import axios from 'axios'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
-const BASE_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
+const VIDEO_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
+const USER_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 
 // 路由
 const router = useRouter()
@@ -110,108 +129,177 @@ const searchKeyword = ref('')
 
 interface DayRecord {
   date: string // YYYY-MM-DD 格式
-  videos: VideoVO[]
+  videos: VideoCardInfo[]
 }
 
 // 历史记录数据
 const historyData = ref<DayRecord[]>([])
 
-// 模拟数据 - 实际项目中替换为 API 调用
-const mockHistoryData: DayRecord[] = [
-  {
-    date: '2024-01-20',
-    videos: [
-      {
-        id: 1,
-        userId: "101",
-        title: '【前端开发】Vue3 + TypeScript 实战教程',
-        videoUrl: 'https://example.com/video1.mp4',
-        coverUrl: 'https://picsum.photos/300/200?random=1',
-        createAt: '2024-01-20',
-        type: false,
-        area: 4,
-        tags: ['Vue', 'TypeScript', '前端开发'],
-        updateAt: '2024-01-20 14:30',
-        duration: 3600,
-      },
-      {
-        id: 2,
-        userId: "102",
-        title: '【前端开发】Vue3 + TypeScript 实战教程',
-        videoUrl: 'https://example.com/video1.mp4',
-        coverUrl: 'https://picsum.photos/300/200?random=1',
-        createAt: '2024-01-20',
-        type: false,
-        area: 4,
-        tags: ['Vue', 'TypeScript', '前端开发'],
-        updateAt: '2024-01-20 14:30',
-        duration: 3600,
-      },
-      {
-        id: 3,
-        userId: "103",
-        title: '【前端开发】Vue3 + TypeScript 实战教程',
-        videoUrl: 'https://example.com/video1.mp4',
-        coverUrl: 'https://picsum.photos/300/200?random=1',
-        createAt: '2024-01-20',
-        type: false,
-        area: 4,
-        tags: ['Vue', 'TypeScript', '前端开发'],
-        updateAt: '2024-01-20 14:30',
-        duration: 3600,
-      }
-    ]
-  },
-  {
-    date: '2024-01-19',
-    videos: [
-      {
-        id: 4,
-        userId: "104",
-        title: '【前端开发】Vue3 + TypeScript 实战教程',
-        videoUrl: 'https://example.com/video1.mp4',
-        coverUrl: 'https://picsum.photos/300/200?random=1',
-        createAt: '2024-01-19',
-        type: false,
-        area: 4,
-        tags: ['Vue', 'TypeScript', '前端开发'],
-        updateAt: '2024-01-20 14:30',
-        duration: 3600,
-      },
-      {
-        id: 5,
-        userId: "105",
-        title: '【前端开发】Vue3 + TypeScript 实战教程',
-        videoUrl: 'https://example.com/video1.mp4',
-        coverUrl: 'https://picsum.photos/300/200?random=1',
-        createAt: '2024-01-19',
-        type: false,
-        area: 4,
-        tags: ['Vue', 'TypeScript', '前端开发'],
-        updateAt: '2024-01-20 14:30',
-        duration: 3600,
-      }
-    ]
-  },
-  {
-    date: '2024-01-18',
-    videos: [
-      {
-        id: 6,
-        userId: "106",
-        title: '【前端开发】Vue3 + TypeScript 实战教程',
-        videoUrl: 'https://example.com/video1.mp4',
-        coverUrl: 'https://picsum.photos/300/200?random=1',
-        createAt: '2024-01-18',
-        type: false,
-        area: 4,
-        tags: ['Vue', 'TypeScript', '前端开发'],
-        updateAt: '2024-01-20 14:30',
-        duration: 3600,
-      }
-    ]
+// 批量获取视频信息（参考 HomePage）
+const getBatchVideoInfo = async (videoIds: number[]): Promise<Map<number, VideoData>> => {
+  const videoInfoMap = new Map<number, VideoData>()
+
+  if (videoIds.length === 0) {
+    return videoInfoMap
   }
-]
+
+  try {
+    const response = await request.post(`${VIDEO_SERVER_URL}/video/batch`, videoIds)
+
+    if (response.data.code === 200 && response.data.data) {
+      const videos = response.data.data
+
+      videos.forEach((video: VideoData) => {
+        videoInfoMap.set(video.id, video)
+      })
+    }
+  } catch (error) {
+    console.error('批量获取视频信息失败:', error)
+  }
+
+  return videoInfoMap
+}
+
+// 批量获取用户信息（参考 HomePage）
+const userCache = ref<Map<number, UserProfile>>(new Map())
+
+const getBatchUserInfo = async (userIds: number[]): Promise<Map<number, UserProfile>> => {
+  const userInfoMap = new Map<number, UserProfile>()
+
+  if (userIds.length === 0) {
+    return userInfoMap
+  }
+
+  // 过滤出未缓存的用户ID
+  const uncachedUserIds = userIds.filter(id => !userCache.value.has(id))
+
+  // 如果所有用户信息都已缓存，直接返回
+  if (uncachedUserIds.length === 0) {
+    userIds.forEach(id => {
+      if (userCache.value.has(id)) {
+        userInfoMap.set(id, userCache.value.get(id)!)
+      }
+    })
+    return userInfoMap
+  }
+
+  try {
+    const response = await request.post(`${USER_SERVER_URL}/user/batch`, uncachedUserIds)
+
+    if (response.data.code === 200 && response.data.data) {
+      const userProfiles = response.data.data
+
+      userProfiles.forEach((userInfo: UserProfile) => {
+        userCache.value.set(userInfo.userId, userInfo)
+        userInfoMap.set(userInfo.userId, userInfo)
+      })
+    }
+  } catch (error) {
+    console.error('批量获取用户信息失败:', error)
+  }
+
+  // 添加已缓存的用户信息到结果中
+  userIds.forEach(id => {
+    if (userCache.value.has(id) && !userInfoMap.has(id)) {
+      userInfoMap.set(id, userCache.value.get(id)!)
+    }
+  })
+
+  return userInfoMap
+}
+
+// 按日期分组视频
+const groupVideosByDate = (videos: VideoCardInfo[]): DayRecord[] => {
+  const groupedMap = new Map<string, VideoCardInfo[]>()
+
+  videos.forEach(video => {
+    // 从 createAt 提取日期部分
+    const date = video.video.createAt.split('T')[0] || video.video.createAt.split(' ')[0]
+
+    if (!groupedMap.has(date)) {
+      groupedMap.set(date, [])
+    }
+    groupedMap.get(date)!.push(video)
+  })
+
+  // 转换为数组并按日期降序排序（最新的在前面）
+  return Array.from(groupedMap.entries())
+    .map(([date, videos]) => ({ date, videos }))
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+}
+
+// 加载历史记录
+const loadHistory = async () => {
+  try {
+    loading.value = true
+
+    // 获取用户观看历史的视频ID列表
+    const response = await request.get(`${VIDEO_SERVER_URL}/video/video-views-history`)
+
+    if (response.data.code !== 200) {
+      console.error('加载历史记录失败:', response.data.message)
+      ElMessage.error('加载历史记录失败')
+      return
+    }
+
+    const videoIds: number[] = response.data.data || []
+    console.log('历史视频ID列表:', videoIds)
+
+    if (videoIds.length === 0) {
+      historyData.value = []
+      return
+    }
+
+    // 批量获取视频详细信息
+    const videoInfoMap = await getBatchVideoInfo(videoIds)
+    console.log('视频信息映射:', videoInfoMap)
+
+    // 提取需要获取用户信息的用户ID
+    const userIds = Array.from(new Set(
+      Array.from(videoInfoMap.values()).map(video => video.userId)
+    ))
+
+    // 批量获取用户信息
+    const userInfoMap = await getBatchUserInfo(userIds)
+    console.log('用户信息映射:', userInfoMap)
+
+    // 组装视频卡片数据
+    const videoCardList: VideoCardInfo[] = videoIds.map(videoId => {
+      const videoInfo = videoInfoMap.get(videoId)
+      const userInfo = userInfoMap.get(videoInfo?.userId || 0)
+
+      if (!videoInfo) {
+        // 如果视频信息获取失败，跳过这个视频
+        return null
+      }
+
+      return {
+        video: videoInfo,
+        uploaderName: userInfo?.nickname || `UP主_${videoInfo.userId}`,
+        uploaderAvatar: userInfo?.avatar || '',
+        playCount: Math.floor(Math.random() * 100000) // 模拟播放量
+      } as VideoCardInfo
+    }).filter(item => item !== null) as VideoCardInfo[]
+
+    // 按日期分组
+    historyData.value = groupVideosByDate(videoCardList)
+    console.log('分组后的历史数据:', historyData.value)
+
+  } catch (error) {
+    console.error('获取历史记录失败:', error)
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('获取信息失败:', error.response.data.message)
+    } else if (error instanceof Error) {
+      console.error('请求失败:', error.message)
+    } else {
+      console.error('请求失败: 未知错误')
+    }
+    ElMessage.error('加载历史记录失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 // 搜索过滤后的历史数据
 const filteredHistoryData = computed(() => {
   if (!searchKeyword.value) {
@@ -219,14 +307,12 @@ const filteredHistoryData = computed(() => {
   }
 
   return historyData.value.map(dayRecord => ({
-    //展开运算符保留原始数据
     ...dayRecord,
-    //过滤视频
     videos: dayRecord.videos.filter(video =>
-      // 过滤条件
-      video.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-      // 根据时间进行过滤，时间分割使用短横线
-      video.createAt.toLowerCase().includes(searchKeyword.value.toLowerCase())
+      // 按标题搜索
+      video.video.title.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
+      // 按日期搜索
+      video.video.createAt.toLowerCase().includes(searchKeyword.value.toLowerCase())
     )
   })).filter(dayRecord => dayRecord.videos.length > 0)
 })
@@ -251,40 +337,12 @@ const formatDate = (dateStr: string) => {
   }
 }
 
-// 加载历史记录
-const loadHistory = async () => {
-  try {
-    loading.value = true
-    // 绑定的数据
-    historyData.value = mockHistoryData
-    // TODO 替换为实际 API 调用处理
-    const response = await request.get(`${BASE_SERVER_URL}/video-views`)
-    if (response.data.code !== 200) {
-      console.log('加载历史记录失败:', response.data.message)
-      ElMessage.error('加载历史记录失败')
-      return
-    }
-    // 需要对时间进行分类
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      console.error('获取信息失败:', error.response.data.message)
-    } else if (error instanceof Error) {
-      console.error('请求失败:', error.message)
-    } else {
-      console.error('请求失败: 未知错误')
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
 // 搜索处理
 const handleSearch = () => {
   // 搜索逻辑已通过计算属性实现
 }
 
-// 清空所有历史
-// TODO 看要不要删除该功能
+// 清空所有历史（保留功能但需要后端支持）
 const handleClearHistory = async () => {
   try {
     await ElMessageBox.confirm(
@@ -297,6 +355,7 @@ const handleClearHistory = async () => {
       }
     )
 
+    // TODO: 调用后端API清空历史记录
     historyData.value = []
     ElMessage.success('历史记录已清空')
   } catch {
@@ -304,8 +363,7 @@ const handleClearHistory = async () => {
   }
 }
 
-// 清空指定日期的历史
-// TODO 看要不要删除该功能
+// 清空指定日期的历史（保留功能但需要后端支持）
 const handleClearDayHistory = async (date: string) => {
   try {
     await ElMessageBox.confirm(
@@ -318,6 +376,7 @@ const handleClearDayHistory = async (date: string) => {
       }
     )
 
+    // TODO: 调用后端API清空指定日期的历史记录
     historyData.value = historyData.value.filter(item => item.date !== date)
     ElMessage.success('当天历史记录已清空')
   } catch {
@@ -326,7 +385,7 @@ const handleClearDayHistory = async (date: string) => {
 }
 
 // 视频点击处理
-const handleVideoClick = (video: VideoVO) => {
+const handleVideoClick = (video: VideoData) => {
   router.push(`/index/video/${video.id}`)
 }
 
