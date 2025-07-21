@@ -4,7 +4,7 @@
       <!-- 左侧1/3：视频封面 -->
       <div class="cover-container">
         <el-image
-          :src="video.coverUrl"
+          :src="`${BASE_MINIO_URL}/cover/${video.coverUrl}`"
           class="video-cover"
           fit="cover"
           :alt="video.title"
@@ -21,7 +21,7 @@
         <!-- UP主信息 -->
         <div class="uploader-info">
           <el-avatar
-            :src="uploaderAvatar"
+            :src="`${BASE_MINIO_URL}/cover/${uploaderAvatar}`"
             :size="32"
             class="uploader-avatar"
           />
@@ -44,6 +44,8 @@
 <script setup lang="ts">
 import { VideoPlay } from '@element-plus/icons-vue'
 import type { VideoData,VideoCardInfo } from '@/types/entity/video'
+
+const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
 // 导出属性
 const props = withDefaults(defineProps<VideoCardInfo>(), {

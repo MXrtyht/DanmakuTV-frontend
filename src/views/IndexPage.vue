@@ -73,7 +73,6 @@ import type { UserInfo } from '@/types/entity/user'
 
 const BASE_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 const USER_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
-const MINIO_SERVER_BASE = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
 const router = useRouter()
 
@@ -116,10 +115,6 @@ const getBatchUserInfo = async (userIds: number[]): Promise<Map<number, UserInfo
 
       // 处理返回的用户信息
       userProfiles.forEach((userInfo: UserInfo) => {
-        // 处理头像URL
-        if (userInfo.avatar) {
-          userInfo.avatar = `${MINIO_SERVER_BASE}/avatar/${userInfo.avatar}`
-        }
 
         // 缓存用户信息
         const userIdString = userInfo.userId
@@ -184,7 +179,7 @@ const loadVideos = async (page: number = 1, isLoadMore: boolean = false) => {
         ...video,
         // 拼接完整的封面URL
         coverUrl: video.coverUrl
-          ? `${MINIO_SERVER_BASE}/cover/${video.coverUrl}`
+          ? video.coverUrl
           : '',
         // 使用真实的用户信息
         uploaderName: userInfo?.nickname || `UP主_${video.userId}`,

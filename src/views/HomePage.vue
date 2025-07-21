@@ -41,7 +41,6 @@ import type { UserInfo } from '@/types/entity/user'
 
 const BASE_VEDIO_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 const BASE_USER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
-const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
 const videoList = ref<VideoCardInfo[]>([])
 
@@ -82,12 +81,9 @@ const loadVideos = async () => {
     pageData.value = res.data.data
     // console.log('加载视频成功:', pageData.value.records)
     videoList.value = pageData.value.records.map((video) => ({
-      video: {
-        ...video,
-        coverUrl:`${BASE_MINIO_URL}/cover/${video.coverUrl}`,
-      },
+      video,
       uploaderName:user.nickname,
-      uploaderAvatar: `${BASE_MINIO_URL}/avatar/${user.avatar}`
+      uploaderAvatar: user.avatar
     }))
 
   } catch (error) {
