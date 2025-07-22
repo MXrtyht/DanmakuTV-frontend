@@ -28,6 +28,7 @@ export interface UserCardInfo {
 export interface UserMoment {
   id: number
   video: {
+    videoId: number
     title: string
     description: string
     cover: string

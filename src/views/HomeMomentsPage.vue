@@ -20,7 +20,7 @@
           </div>
 
           <!-- 活动内容 -->
-          <div class="activity-content">
+          <div class="activity-content" @click="goToVideo(activity)" style="cursor: pointer;">
 
             <!-- 相关内容预览 -->
             <div v-if="activity.video" class="activity-preview">
@@ -58,6 +58,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import type { UserMoment } from '@/types/entity/user'
 import axios from 'axios'
 import request from '@/utils/request'
@@ -71,6 +72,8 @@ const VIDEO_SERVICE_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 
 const activities = ref<UserMoment[]>([])
 const userAvatar=ref('')
+
+const router = useRouter()
 
 const formatTime = (time:Date) => {
   const now:Date = new Date()
@@ -123,6 +126,7 @@ const loadData = async () => {
         return {
         id: moment.id,
         video: {
+          videoId: video.id,
           title: video.title,
           description: video.description || '', // 处理可能的 undefined
           // 没有使用videoCard，需要拼接字符串
@@ -150,6 +154,13 @@ const loadData = async () => {
     } else {
         console.error('请求失败: 未知错误');
     }
+  }
+}
+
+const goToVideo = (activity: UserMoment) => {
+  if (activity.video) {
+    // 跳转到视频详情页
+    router.push(`/index/video/${activity.video.videoId}`);
   }
 }
 
