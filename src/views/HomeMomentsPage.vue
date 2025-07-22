@@ -62,47 +62,20 @@ import type { UserMoment } from '@/types/entity/user'
 import axios from 'axios'
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
+import type { UserMomentResponse } from '@/types/response/userResponse'
+import type { VideoData } from '@/types/entity/video'
 
 const MINIO_SERVICE_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 const USER_SERVICE_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
+const VIDEO_SERVICE_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 
 const activities = ref<UserMoment[]>([])
 const userAvatar=ref('')
 
-// 模拟数据
-const mockActivities = [
-  {
-    id: 1,
-    video: {
-      title: 'Vue3 开发实践总结',
-      description: '分享一些在Vue3项目开发中的经验和心得...',
-      cover: 'https://via.placeholder.com/300x200'
-    },
-    time: new Date(Date.now() - 2 * 60 * 60 * 1000),
-  },
-  {
-    id: 2,
-    video: {
-      title: 'Element Plus 组件库使用指南',
-      description: '详细介绍Element Plus的各种组件使用方法...',
-      cover: 'https://via.placeholder.com/300x200'
-    },
-    time: new Date(Date.now() - 5 * 60 * 60 * 1000),
-  },
-  {
-    id: 3,
-    video: {
-      title: 'JavaScript异步编程详解',
-      description: '很实用的文章，学到了很多新知识！',
-      cover: 'https://via.placeholder.com/300x200'
-    },
-    time: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-  },
-]
-
 const formatTime = (time:Date) => {
   const now:Date = new Date()
-  const diff = now.getTime() - time.getTime()
+  const timeDate = new Date(time)
+  const diff = now.getTime() - timeDate.getTime()
   const minutes = Math.floor(diff / (1000 * 60))
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -118,8 +91,48 @@ const formatTime = (time:Date) => {
 
 const loadData = async () => {
   try{
-    // TODO 获取用户动态
-    // const userMoment = await request.get('/user/moments');
+    // 获取用户动态
+    const userMomentRes = await request.get(`${USER_SERVICE_URL}/user/user-subscribed-moments`);
+    console.log('用户动态:', userMomentRes.data.data);
+    if(userMomentRes.data.code !== 200 || !userMomentRes.data.data){
+      console.error('获取用户动态失败:', userMomentRes.data.data);
+      ElMessage.error('获取用户动态失败');
+      return;
+    }
+    const userMoments=userMomentRes.data.data as UserMomentResponse[];
+    const videoIdList= userMoments.map(moment => moment.contentId);
+    // 批量获取视频信息
+    const videoRes = await request.post(`${VIDEO_SERVICE_URL}/video/batch`, videoIdList);
+    console.log('视频信息:', videoRes.data.data);
+    if(videoRes.data.code !== 200 || !videoRes.data.data){
+      console.error('获取视频信息失败:', videoRes.data.message);
+      ElMessage.error('获取视频信息失败');
+      return;
+    }
+    const videoList= videoRes.data.data as VideoData[];
+
+    const videoMap = new Map<number, VideoData>();
+    videoList.forEach(video => videoMap.set(video.id, video));
+    // 处理用户动态和视频信息
+    activities.value = userMoments.map(moment => {
+      const video = videoMap.get(moment.contentId);
+      if (!video) {
+          console.warn(`未找到视频: contentId=${moment.contentId}`);
+        return null;
+      }
+        return {
+        id: moment.id,
+        video: {
+          title: video.title,
+          description: video.description || '', // 处理可能的 undefined
+          // 没有使用videoCard，需要拼接字符串
+          cover: `${MINIO_SERVICE_URL}/cover/${video.coverUrl}`,
+        },
+        time: moment.createTime,
+      };
+    }).filter(Boolean) as UserMoment[];
+    // console.log('处理后的用户动态:', activities.value);
+
     const userInfo = await request.get(`${USER_SERVICE_URL}/user/info`);
     console.log('用户信息:', userInfo.data);
     if(userInfo.data.code !== 200 || !userInfo.data.data){
@@ -131,7 +144,7 @@ const loadData = async () => {
   }
   catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
-        console.error('注册失败:', error.response.data.message);
+        console.error('请求失败:', error.response.data.message);
     } else if (error instanceof Error) {
         console.error('请求失败:', error.message);
     } else {
@@ -142,7 +155,6 @@ const loadData = async () => {
 
 // 生命周期
 onMounted(() => {
-  activities.value = [...mockActivities]
   loadData()
 })
 </script>
