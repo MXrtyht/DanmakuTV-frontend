@@ -62,7 +62,7 @@ const router = createRouter({
     },
     {
       path: '/test', // 测试专用路由
-      component: () => import('@/test/TestHeaderBar.vue'),
+      component: () => import('@/test/TestDanmaku.vue'),
       meta: { isTest: true }, // 标记为测试路由
     },
     {
