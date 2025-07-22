@@ -130,7 +130,7 @@ const loadData = async () => {
         },
         time: moment.createTime,
       };
-    }).filter(Boolean) as UserMoment[];
+    }).filter(Boolean).sort((a, b) => b!.id - a!.id) as UserMoment[];
     // console.log('处理后的用户动态:', activities.value);
 
     const userInfo = await request.get(`${USER_SERVICE_URL}/user/info`);
