@@ -6,6 +6,7 @@ export interface VideoData {
   title: string
   type: boolean
   duration: number
+  description: string
   area: number
   tags?: string[]
   createAt: string

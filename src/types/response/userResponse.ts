@@ -46,3 +46,10 @@ export interface UserFanResponse {
   profile: UserProfile
   isFollowing: boolean
 }
+
+export interface UserMomentResponse {
+  id: number
+  userId: number
+  contentId: number
+  createTime: Date
+}

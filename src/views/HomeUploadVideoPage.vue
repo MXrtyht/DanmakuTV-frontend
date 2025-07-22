@@ -229,6 +229,7 @@ import type { UploadFile } from 'element-plus'
 import axios from 'axios'
 import request from '@/utils/request'
 import { getVideoDuration } from '@/utils/computeDuration'
+import { useRouter } from 'vue-router'
 
 /**
  * 目前上传的流程
@@ -252,6 +253,7 @@ const coverPreviewUrl = ref('')
 
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVICE_BASE_API;
 const BASE_VIDEO_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API;
+const BASE_USER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 
 interface uploadFormData{
   videoFile?: UploadFile, // 上传的视频文件
@@ -285,6 +287,7 @@ const formData = reactive<uploadFormData>({
 
 // 视频分区选项
 const categories = ref<VideoArea[]>();
+const router = useRouter()
 
 // 表单验证规则
 const rules = {
@@ -515,10 +518,25 @@ const submitForm = async () => {
       coverUrl: uploadCoverRes.data // 封面文件的URL
     })
     if (response.data.code !== 200||!response.data.data) {
-      console.error('上传视频失败:', response.data)
+      console.error('上传视频失败:', response.data.data)
       ElMessage.error('上传视频失败')
       return
     }
+    // 发布动态
+    const uploadMomentRes=await request.post(`${BASE_USER_URL}/user/user-moments`, {
+      id: 0, // 可以为任意
+      userId: formData.userId,
+      contentId: Number(response.data.data), // 视频ID
+      createTime: new Date().toISOString() // 使用当前时间作为创建时间
+    })
+    if (uploadMomentRes.data.code !== 200||!uploadMomentRes.data.data) {
+      console.error('发布动态失败:', uploadMomentRes.data.message)
+      ElMessage.error('发布动态失败')
+      return
+    }
+
+    // 上传成功后跳转个人主页
+    router.push('/home');
   } catch (error) {
     submitting.value = false
     if (axios.isAxiosError(error) && error.response) {
