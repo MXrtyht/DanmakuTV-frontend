@@ -306,6 +306,12 @@ const rules = {
   ]
 }
 
+// 严格的文件名校验（只允许字母、数字、下划线、连字符）
+const strictFileNameValidation = (fileName: string): boolean => {
+  const validPattern = /^[a-zA-Z0-9_.-]+$/;
+  return validPattern.test(fileName);
+};
+
 // 方法
 const formatFileSize = (bytes:number|undefined) => {
   if (bytes === undefined) return '0 Bytes'
@@ -317,6 +323,11 @@ const formatFileSize = (bytes:number|undefined) => {
 }
 
 const beforeUpload = (file:UploadFile) => {
+  // 添加文件名验证
+  if (!strictFileNameValidation(file.name)) {
+    ElMessage.error('文件名只能包含字母、数字、下划线和连字符!')
+    return false
+  }
   if (file.raw===undefined){
     return false
   }
@@ -345,6 +356,11 @@ const handleFileChange = (file:UploadFile) => {
 }
 
 const beforeCoverUpload = (file:UploadFile) => {
+  // 添加文件名验证
+  if (!strictFileNameValidation(file.name)) {
+    ElMessage.error('文件名只能包含字母、数字、下划线和连字符!')
+    return false
+  }
   console.log('beforeCoverUpload', file)
   if (file.raw===undefined){
     return false

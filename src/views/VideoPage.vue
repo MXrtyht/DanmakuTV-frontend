@@ -34,7 +34,10 @@
           class="sidebar-card"
           shadow="never"
         >
-        <VideoRecommendations :video-id="videoId" :tags="videoData.tags" />
+          <VideoRecommendations
+            :video-id="videoId"
+            :tags="videoData.tags"
+          />
         </el-card>
       </el-col>
     </el-row>
@@ -105,9 +108,9 @@ import { ElMessage } from 'element-plus'
 import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
-import VideoPlayer from '../components/VideoPageComponents/VideoPlayer.vue'
-import VideoInfoActions from '../components/VideoPageComponents/VideoInfoActions.vue'
 import VideoComments from '../components/VideoPageComponents/VideoComments.vue'
+import VideoInfoActions from '../components/VideoPageComponents/VideoInfoActions.vue'
+import VideoPlayer from '../components/VideoPageComponents/VideoPlayer.vue'
 import VideoRecommendations from '../components/VideoPageComponents/VideoRecommendations.vue'
 
 
@@ -328,7 +331,9 @@ const cancelCollect = () => {
 const buildVideoStreamUrl = (videoUrl: string): string => {
   // 使用您提供的分片视频流接口
   const bucketName = 'video' // 假设视频存储在 video 桶中
-  return `${MINIO_SERVICE_URL}/upload/video-slice/${bucketName}/${videoUrl}`
+  const encodedVideoUrl = encodeURIComponent(videoUrl)
+  
+  return `${MINIO_SERVICE_URL}/upload/video-slice/${bucketName}?objectName=${encodedVideoUrl}`
 }
 
 // 加载收藏信息
@@ -385,7 +390,7 @@ const loadVideoInfo = async () => {
 
     console.log('加载视频信息:', videoId)
     // 添加视频记录
-    const hisResponse = await request.post(`${VIDEO_SERVER_URL}/video/video-views`,videoId,{
+    const hisResponse = await request.post(`${VIDEO_SERVER_URL}/video/video-views`, videoId, {
       headers: {
         'Content-Type': 'application/json'
       }
@@ -452,8 +457,10 @@ onMounted(() => {
 .sidebar-wrapper {
   /* 让侧边栏可以向右扩展 */
   width: 100%;
-  max-width: 400px; /* 设置最大宽度避免过宽 */
-  margin-left: auto; /* 如果需要的话可以让侧边栏靠右 */
+  max-width: 400px;
+  /* 设置最大宽度避免过宽 */
+  margin-left: auto;
+  /* 如果需要的话可以让侧边栏靠右 */
 }
 
 .sidebar-card {
@@ -467,7 +474,8 @@ onMounted(() => {
 /* 或者更激进的方案：完全利用右侧空间 */
 .video-page {
   padding: 20px;
-  max-width: 1600px; /* 增加最大宽度 */
+  max-width: 1600px;
+  /* 增加最大宽度 */
   margin: 0 auto;
   width: 100%;
 }
@@ -619,7 +627,7 @@ onMounted(() => {
     min-width: auto;
     max-width: 1200px;
   }
-  
+
   .sidebar-wrapper {
     max-width: 300px;
   }
@@ -642,7 +650,7 @@ onMounted(() => {
   .collect-dialog-content {
     max-height: 300px;
   }
-  
+
   .sidebar-wrapper {
     max-width: none;
   }

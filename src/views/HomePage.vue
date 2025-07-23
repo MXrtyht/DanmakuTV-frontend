@@ -67,7 +67,7 @@ const loadVideos = async () => {
       return
     }
     const user = userInfo.data.data as UserInfo
-    const res = await request.get(`${BASE_VEDIO_URL}/video/all`, {
+    const res = await request.get(`${BASE_VEDIO_URL}/video/user`, {
       params: {
         size: pagination.value.size,
         page: pagination.value.page,
