@@ -1,5 +1,5 @@
 <template>
-  <HeaderBar :sticky="false" :show-search="false"/>
+  <HeaderBar :sticky="false" :show-search="false" />
   <div class="search-results-page">
     <!-- 顶部搜索框 -->
     <div class="search-section">
@@ -13,11 +13,7 @@
           @keyup.enter="handleSearch"
         >
           <template #append>
-            <el-button
-              @click="handleSearch"
-              :icon="Search"
-              type="primary"
-            />
+            <el-button @click="handleSearch" :icon="Search" type="primary" />
           </template>
         </el-input>
       </div>
@@ -39,13 +35,8 @@
         <div class="user-card">
           <!-- 用户信息部分 -->
           <div class="user-info">
-            <el-avatar
-              :src="searchResults.topUser.avatar"
-              :size="60"
-              class="user-avatar"
-            >
-            <!-- TODO 设置为用户的头像 -->
-              <el-icon><User /></el-icon>
+            <el-avatar :src="searchResults.topUser.avatar" :size="60" class="user-avatar">
+              <el-icon v-if="!searchResults.topUser.avatar"><User /></el-icon>
             </el-avatar>
             <div class="user-details">
               <div class="user-header">
@@ -61,8 +52,9 @@
               </div>
               <p class="user-stats">
                 <span>{{ formatNumber(searchResults.topUser.followers) }} 粉丝</span>
-                <span class="separator">·</span>
-                <span>{{ formatNumber(searchResults.topUser.videoCount) }} 作品</span>
+                <!-- TODO 没有获取视频数的接口-->
+                <!-- <span class="separator">·</span>
+                <span>{{ formatNumber(searchResults.topUser.videoCount) }} 作品</span> -->
               </p>
               <p v-if="searchResults.topUser.description" class="user-description">
                 {{ searchResults.topUser.description }}
@@ -71,18 +63,21 @@
           </div>
 
           <!-- 用户视频部分 -->
-          <div v-if="searchResults.topUser.videos && searchResults.topUser.videos.length > 0" class="user-videos">
+          <div
+            v-if="searchResults.topUser.videos && searchResults.topUser.videos.length > 0"
+            class="user-videos"
+          >
             <h4 class="videos-title">TA的视频</h4>
             <div class="videos-row">
               <VideoCard
-                v-for="videoItem in userVideoCards"
-                :key="videoItem.video.id"
-                :video="videoItem.video"
+                v-for="videoItem in searchResults.topUser!.videos"
+                :key="videoItem.id"
+                :video="videoItem"
                 :uploader-name="videoItem.uploaderName"
                 :uploader-avatar="videoItem.uploaderAvatar"
                 :play-count="videoItem.playCount"
                 class="user-video-card"
-                @click="handleVideoClick"
+                @click="handleVideoClick(videoItem.id)"
               />
             </div>
           </div>
@@ -95,125 +90,304 @@
           <h2>相关视频</h2>
           <span class="result-count">共找到 {{ searchResults.totalCount }} 个结果</span>
         </div>
-
+        <!-- 视频网格（保持原有样式） -->
         <div class="videos-grid">
           <VideoCard
-            v-for="videoItem in searchVideoCards"
-            :key="videoItem.video.id"
-            :video="videoItem.video"
+            v-for="videoItem in searchResults.videos"
+            :key="videoItem.id"
+            :video="videoItem"
             :uploader-name="videoItem.uploaderName"
             :uploader-avatar="videoItem.uploaderAvatar"
             :play-count="videoItem.playCount"
             class="grid-video-card"
-            @click="handleVideoClick"
+            @click="handleVideoClick(videoItem.id)"
           />
         </div>
+        <!-- 分页控件 -->
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.size"
+          :total="searchResults.totalCount"
+          :page-sizes="[12, 24, 36, 48]"
+          layout="total, sizes, prev, pager, next, jumper"
+          background
+          @current-change="handlePageChange"
+          @size-change="handleSizeChange"
+          class="search-pagination"
+        />
 
-      <!-- 无结果提示 -->
-      <div v-if="!searchResults.topUser && (!searchResults.videos || searchResults.videos.length === 0)" class="no-results">
-        <el-empty description="暂无搜索结果">
-          <el-button type="primary" @click="clearSearch">重新搜索</el-button>
-        </el-empty>
+        <!-- 无结果提示 -->
+        <div
+          v-if="
+            !searchResults.topUser && (!searchResults.videos || searchResults.videos.length === 0)
+          "
+          class="no-results"
+        >
+          <el-empty description="暂无搜索结果">
+            <el-button type="primary" @click="clearSearch">重新搜索</el-button>
+          </el-empty>
+        </div>
+      </div>
+
+      <!-- 初始状态 -->
+      <div v-else class="initial-state">
+        <el-empty description="输入关键词开始搜索" />
       </div>
     </div>
-
-    <!-- 初始状态 -->
-    <div v-else class="initial-state">
-      <el-empty description="输入关键词开始搜索" />
-    </div>
-  </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { Search, User } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { Search,User } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import VideoCard from '@/components/videoCard/VideoCard.vue'
 import HeaderBar from '@/components/headerBar/HeaderBar.vue'
-import type { VideoVO, VideoCardInfo } from '@/types/entity/video'
+import type { VideoVO } from '@/types/entity/video'
 import axios from 'axios'
 import request from '@/utils/request'
+import type { VideoData } from '@/types/entity/video'
+import type { PageResponse, IPage } from '@/types/api/iPage'
+import type { GenreResponse } from '@/types/response/genreResponse'
+import type { UserProfile } from '@/types/entity/user'
+// import type { VideoCountVO } from '@/types/response/videoResponse'
+import { getVideoPlayCountBatch } from '@/utils/utils'
+
+const BASE_VEDIO_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
+const BASE_USER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
+const BASE_SEARCH_URL = import.meta.env.VITE_SEARCH_SERVICE_BASE_API
+const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
+
+const router = useRouter()
 
 // 数据类型定义
-interface UserInfo {
-  id: string
+interface UserSearchInfo {
+  id: number
   name: string
   avatar: string
-  followers: number
-  videoCount: number
+  followers?: number
+  // videoCount?: number
   description?: string
   videos?: VideoVO[]
 }
 
 interface SearchResults {
-  topUser?: UserInfo
+  topUser?: UserSearchInfo
   videos: VideoVO[]
   totalCount: number
 }
 
 // 响应式数据
 const searchKeyword = ref('')
-const searchResults = ref<SearchResults | null>(null)
+const searchResults = ref<SearchResults>({ videos: [], totalCount: 0 })
 const loading = ref(false)
-const currentPage = ref(1)
 
-// 计算属性：将用户视频转换为VideoCard需要的格式
-const userVideoCards = computed((): VideoCardInfo[] => {
-  if (!searchResults.value?.topUser?.videos) return []
-
-  return searchResults.value.topUser.videos.slice(0, 4).map(video => ({
-    video,
-    uploaderName: searchResults.value!.topUser!.name,
-    uploaderAvatar: searchResults.value!.topUser!.avatar,
-    playCount: Math.floor(Math.random() * 50000) + 1000 // 硬编码播放量
-  }))
-})
-
-// 计算属性：将搜索结果视频转换为VideoCard需要的格式
-const searchVideoCards = computed((): VideoCardInfo[] => {
-  if (!searchResults.value?.videos) return []
-
-  return searchResults.value.videos.map(video => ({
-    video,
-    uploaderName: `UP主${video.id}`,
-    uploaderAvatar: `https://via.placeholder.com/32x32/409EFF/ffffff?text=U${video.id}`,
-    playCount: Math.floor(Math.random() * 50000) + 1000 // 硬编码播放量
-  }))
+const pagination = ref({
+  size: 10,
+  page: 1,
 })
 
 // 方法
+// 进行搜索
 const handleSearch = async () => {
   if (!searchKeyword.value.trim()) {
     return
   }
 
   loading.value = true
-  currentPage.value = 1
 
   try {
-    // 调用搜索API
-    searchResults.value = mockSearchResults
-    // const response = await request.get('')
-    // if(response.data.code !== 200) {
-    //   console.log('搜索失败:', response.data.message)
-    //   ElMessage.error('搜索失败，请稍后再试')
-    //   return
-    // }
+    // 1. 调用接口搜索用户信息
+    const userSearchResult = await getSearchUserInfo()
+    if (userSearchResult !== undefined) {
+      searchResults.value.topUser = userSearchResult as UserSearchInfo
+      console.log(searchResults.value.topUser)
+    }
+
+    // 2. 调用搜索视频接口
+    const videoSearchResult = await getSearchVideoInfo()
+    if (videoSearchResult !== undefined) {
+      searchResults.value.videos = videoSearchResult.result as VideoData[]
+      // 3. 更新SearchResults的总数
+      searchResults.value.totalCount = videoSearchResult.total
+    }
   } catch (error: unknown) {
-      if (axios.isAxiosError(error) && error.response) {
-          console.error('注册失败:', error.response.data.message);
-      } else if (error instanceof Error) {
-          console.error('请求失败:', error.message);
-      } else {
-          console.error('请求失败: 未知错误');
-      }
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('请求失败:', error.response.data.message)
+    } else if (error instanceof Error) {
+      console.error('请求失败:', error.message)
+    } else {
+      console.error('请求失败: 未知错误')
+    }
   } finally {
     loading.value = false
   }
 }
 
-const handleFollowUser = async (userId: string) => {
+// 搜索用户
+const getSearchUserInfo = async () => {
+  let userInfo: UserSearchInfo | undefined = undefined
+
+  const userRes = await request.get<GenreResponse<PageResponse<UserProfile>>>(
+    `${BASE_SEARCH_URL}/search/user-page`,
+    {
+      params: {
+        nickname: searchKeyword.value,
+        page: pagination.value.page - 1, // 后端页码从0开始，前端从1开始
+        size: pagination.value.size,
+      },
+    },
+  )
+  if (userRes.data.code !== 200 || !userRes.data.data) {
+    console.error('搜索用户失败:', userRes.data.data)
+    ElMessage.error(userRes.data.message || '搜索用户失败')
+    return userInfo
+  }
+
+  // 2. 映射用户数据
+  const userPageData = userRes.data.data as PageResponse<UserProfile>
+  // console.log(userPageData)
+  if (userPageData.content.length > 0) {
+    const topUser = userPageData.content[0]
+    userInfo = {
+      id: topUser.id,
+      name: topUser.nickname,
+      avatar: `${BASE_MINIO_URL}/avatar/${topUser.avatar}`,
+      description: topUser.sign,
+    }
+  }
+  // 如果没有找到用户信息，返回undefined
+  else {
+    return userInfo
+  }
+
+  // 3. 获取用户的粉丝数和视频数
+  const userFollowCount = await request.get(`${BASE_USER_URL}/user/follow-count`)
+  if (userFollowCount.data.code !== 200 || !userFollowCount.data.data) {
+    console.error('获取用户粉丝数失败:', userFollowCount.data.message)
+    ElMessage.error('获取用户粉丝数失败，请稍后再试')
+  }
+  userInfo.followers = userFollowCount.data.data as number
+
+  // 4. 获取用户的视频，这里只获取4个视频
+  const userVideoRes = await request.get<GenreResponse<IPage<VideoData>>>(
+    `${BASE_VEDIO_URL}/video/user`,
+    {
+      params: {
+        page: 0, // 后端页码从0开始，前端从1开始
+        size: 4, // 只获取4个视频
+      },
+    },
+  )
+
+  if (userVideoRes.data.code !== 200 || !userVideoRes.data.data) {
+    console.error('获取用户视频失败:', userVideoRes.data.message)
+    ElMessage.error('获取用户视频失败，请稍后再试')
+  }
+
+  const pageData = userVideoRes.data.data as IPage<VideoData>
+  userInfo.videos = pageData.records as VideoData[]
+
+  // 5. 填写VideoCard数据
+  userInfo.videos = userInfo.videos.map((video) => ({
+    ...video,
+    uploaderAvatar: userPageData.content[0].avatar,
+    uploaderName: userPageData.content[0].nickname,
+  }))
+
+  const videoIdList: number[] = pageData.records.map((video) => video.id)
+  const videoCountRes = await getVideoPlayCountBatch(
+    videoIdList,
+    `${BASE_VEDIO_URL}/video/video-view-counts-batch`,
+  )
+  if (videoCountRes != undefined) {
+    // 更新 playCount
+    userInfo.videos.forEach((video) => {
+      video.playCount = videoCountRes.get(video.id) || 0
+    })
+  }
+  // 返回结果
+  return userInfo
+}
+
+// 搜索视频
+const getSearchVideoInfo = async () => {
+  let videoInfo: VideoVO[] | undefined = undefined
+  let total: number = 0
+
+  // 1. 调用接口搜索视频信息
+  const videoRes = await request.get<GenreResponse<PageResponse<VideoData>>>(
+    `${BASE_SEARCH_URL}/search/video-page`,
+    {
+      params: {
+        keyword: searchKeyword.value,
+        page: pagination.value.page - 1, // 后端页码从0开始，前端从1开始
+        size: pagination.value.size,
+      },
+    },
+  )
+
+  if (videoRes.data.code !== 200 || !videoRes.data.data) {
+    console.error('搜索视频失败:', videoRes.data.message)
+    ElMessage.error(videoRes.data.message || '搜索视频失败')
+    return { result: videoInfo, total: total }
+  }
+
+  // 2. 映射数据到前端分页结构
+  const pageData = videoRes.data.data as PageResponse<VideoData>
+  if (pageData.content.length > 0) {
+    videoInfo = pageData.content
+  } else {
+    // 此时的videoInfo还是undefinded
+    return { result: videoInfo, total: total }
+  }
+  // 3. 设置视频总数
+  total = pageData.totalElements
+
+  // 4. 填写VideoCard信息
+
+  // 首先获取到userId列表
+  const userIdList: number[] = pageData.content.map((video) => video.userId)
+  const videoIdList: number[] = pageData.content.map((video) => video.id)
+
+  // 然后批量请求用户信息
+  const userInfoRes = await request.post(`${BASE_USER_URL}/user/batch`, userIdList)
+  if (userInfoRes.data.code != 200 || !userInfoRes.data.data) {
+    ElMessage.error('获取用户信息失败')
+    console.log('批量获取用户信息失败：', userInfoRes.data.data)
+  }
+  const userInfo = userInfoRes.data.data as UserProfile[]
+  const userMap = new Map<number, UserProfile>()
+  userInfo.forEach((user) => {
+    userMap.set(user.userId, user)
+  })
+  // console.log(userMap)
+  videoInfo = videoInfo.map((video) => {
+    const uploader = userMap.get(video.userId)
+    return {
+      ...video,
+      uploaderName: uploader?.nickname,
+      uploaderAvatar: uploader?.avatar,
+    }
+  })
+  // console.log(videoInfo)
+  // 再填写播放量
+  const videoCountRes = await getVideoPlayCountBatch(
+    videoIdList,
+    `${BASE_VEDIO_URL}/video/video-view-counts-batch`,
+  )
+  if (videoCountRes != undefined) {
+    // 更新 playCount
+    videoInfo.forEach((video) => {
+      video.playCount = videoCountRes.get(video.id) || 0
+    })
+  }
+  return { result: videoInfo, total: total }
+}
+
+//处理用户关注
+const handleFollowUser = async (userId: number) => {
   try {
     // 调用关注用户API
     const response = await request.post(`/user/follow/${userId}`)
@@ -223,178 +397,75 @@ const handleFollowUser = async (userId: string) => {
       return
     }
     ElMessage.success('关注成功')
-  } catch (error:unknown) {
-      if (axios.isAxiosError(error) && error.response) {
-          console.error('注册失败:', error.response.data.message);
-      } else if (error instanceof Error) {
-          console.error('请求失败:', error.message);
-      } else {
-          console.error('请求失败: 未知错误');
-      }
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('注册失败:', error.response.data.message)
+    } else if (error instanceof Error) {
+      console.error('请求失败:', error.message)
+    } else {
+      console.error('请求失败: 未知错误')
+    }
   }
 }
 
-const handleVideoClick = (video: VideoVO) => {
-  console.log('点击视频:', video)
-  // 这里可以跳转到视频播放页面
+// 视频跳转
+const handleVideoClick = (videoId: number) => {
+  router.push(`/index/video/${videoId}`)
 }
 
+// 清空搜索输入框
 const clearSearch = () => {
   searchKeyword.value = ''
-  searchResults.value = null
+  // searchResults.value = null
 }
 
-const formatNumber = (num: number): string => {
+// 格式化日期
+const formatNumber = (num: number | undefined): string => {
+  if (num === undefined) return '0'
   if (num >= 10000) {
     return (num / 10000).toFixed(1) + '万'
   }
   return num.toString()
 }
 
-// 模拟数据（转换为VideoData格式）
-const mockSearchResults = {
-  topUser: {
-    id: '1',
-    name: '科技UP主小明',
-    avatar: 'https://via.placeholder.com/60x60/409EFF/ffffff?text=用户',
-    followers: 125000,
-    videoCount: 89,
-    description: '专注前端开发技术分享，每周更新Vue、React等前端框架教程',
-    videos: [
-      {
-        id: 1,
-        userId: 1,
-        videoUrl: 'https://example.com/video1.mp4',
-        coverUrl: 'https://via.placeholder.com/300x180/67C23A/ffffff?text=视频1',
-        title: 'Vue3 + TypeScript 项目实战教程',
-        type: true,
-        duration: 1520,
-        area: 1,
-        tags: ['Vue3', 'TypeScript'],
-        createAt: '2024-01-15T10:30:00',
-        updateAt: '2024-01-15T10:30:00'
-      },
-      {
-        id: 2,
-        userId: 1,
-        videoUrl: 'https://example.com/video2.mp4',
-        coverUrl: 'https://via.placeholder.com/300x180/E6A23C/ffffff?text=视频2',
-        title: 'ElementUI组件库深度解析',
-        type: true,
-        duration: 2340,
-        area: 1,
-        tags: ['ElementUI', 'Vue'],
-        createAt: '2024-01-12T14:20:00',
-        updateAt: '2024-01-12T14:20:00'
-      },
-      {
-        id: 3,
-        userId: 1,
-        videoUrl: 'https://example.com/video3.mp4',
-        coverUrl: 'https://via.placeholder.com/300x180/F56C6C/ffffff?text=视频3',
-        title: '前端性能优化实践指南',
-        type: true,
-        duration: 1890,
-        area: 1,
-        tags: ['性能优化', '前端'],
-        createAt: '2024-01-10T09:15:00',
-        updateAt: '2024-01-10T09:15:00'
-      }
-    ]
-  },
-  videos: [
-    {
-      id: 4,
-      userId: 2,
-      videoUrl: 'https://example.com/video4.mp4',
-      coverUrl: 'https://via.placeholder.com/300x180/909399/ffffff?text=React',
-      title: 'React Hooks 完全指南',
-      type: true,
-      duration: 1680,
-      area: 1,
-      tags: ['React', 'Hooks'],
-      createAt: '2024-01-14T16:45:00',
-      updateAt: '2024-01-14T16:45:00'
-    },
-    {
-      id: 5,
-      userId: 3,
-      videoUrl: 'https://example.com/video5.mp4',
-      coverUrl: 'https://via.placeholder.com/300x180/E6A23C/ffffff?text=JS',
-      title: 'JavaScript 异步编程详解',
-      type: true,
-      duration: 2100,
-      area: 1,
-      tags: ['JavaScript', '异步编程'],
-      createAt: '2024-01-13T11:30:00',
-      updateAt: '2024-01-13T11:30:00'
-    },
-    {
-      id: 6,
-      userId: 4,
-      videoUrl: 'https://example.com/video6.mp4',
-      coverUrl: 'https://via.placeholder.com/300x180/F56C6C/ffffff?text=CSS',
-      title: 'CSS Grid 布局实战',
-      type: true,
-      duration: 1440,
-      area: 1,
-      tags: ['CSS', 'Grid'],
-      createAt: '2024-01-11T13:20:00',
-      updateAt: '2024-01-11T13:20:00'
-    },
-    {
-      id: 7,
-      userId: 5,
-      videoUrl: 'https://example.com/video7.mp4',
-      coverUrl: 'https://via.placeholder.com/300x180/67C23A/ffffff?text=Node',
-      title: 'Node.js 后端开发入门',
-      type: true,
-      duration: 2580,
-      area: 1,
-      tags: ['Node.js', '后端'],
-      createAt: '2024-01-09T15:10:00',
-      updateAt: '2024-01-09T15:10:00'
-    },
-    {
-      id: 8,
-      userId: 6,
-      videoUrl: 'https://example.com/video8.mp4',
-      coverUrl: 'https://via.placeholder.com/300x180/409EFF/ffffff?text=TS',
-      title: 'TypeScript 类型系统深入',
-      type: true,
-      duration: 1920,
-      area: 1,
-      tags: ['TypeScript'],
-      createAt: '2024-01-08T10:00:00',
-      updateAt: '2024-01-08T10:00:00'
-    },
-    {
-      id: 9,
-      userId: 7,
-      videoUrl: 'https://example.com/video9.mp4',
-      coverUrl: 'https://via.placeholder.com/300x180/909399/ffffff?text=WP',
-      title: 'Webpack 5 配置优化指南',
-      type: true,
-      duration: 1760,
-      area: 1,
-      tags: ['Webpack'],
-      createAt: '2024-01-07T14:30:00',
-      updateAt: '2024-01-07T14:30:00'
+// 每页条数变化
+const handleSizeChange = (size: number) => {
+  pagination.value.size = size
+  // loadVideos()
+}
+
+// 翻页处理
+const handlePageChange = async () => {
+  // 仅仅处理视频
+
+  loading.value = true
+
+  try {
+    // 1. 调用搜索视频接口
+    const videoSearchResult = await getSearchVideoInfo()
+    if (videoSearchResult !== undefined) {
+      searchResults.value.videos = videoSearchResult.result as VideoData[]
     }
-  ],
-  totalCount: 156
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('注册失败:', error.response.data.message)
+    } else if (error instanceof Error) {
+      console.error('请求失败:', error.message)
+    } else {
+      console.error('请求失败: 未知错误')
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 // 组件挂载时自动加载示例数据
 onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search)
   const keyword = urlParams.get('q')
+  // 如果有搜索参数，直接使用
   if (keyword) {
     searchKeyword.value = keyword
-    handleSearch()
-  } else {
-    // 如果没有搜索参数，加载默认示例数据
-    searchKeyword.value = ''
     handleSearch()
   }
 })
@@ -410,7 +481,7 @@ onMounted(() => {
 .search-section {
   background: white;
   padding: 30px 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
 .search-container {
@@ -421,7 +492,7 @@ onMounted(() => {
 
 .search-input :deep(.el-input__wrapper) {
   border-radius: 25px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .loading-container {
@@ -460,7 +531,7 @@ onMounted(() => {
   background: white;
   border-radius: 12px;
   padding: 24px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   margin-bottom: 20px;
 }
 
@@ -586,6 +657,18 @@ onMounted(() => {
   .videos-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+}
+
+.search-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+  .search-pagination {
+    flex-wrap: wrap;
   }
 }
 

@@ -7,3 +7,9 @@ export interface AllVideoResponse {
   message:string
   data:IPage<VideoData>| null
 }
+
+
+export interface VideoCountVO{
+  videoId:number
+  count:number
+}

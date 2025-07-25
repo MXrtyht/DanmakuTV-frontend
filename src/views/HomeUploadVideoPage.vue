@@ -228,7 +228,7 @@ import {
 import type { UploadFile } from 'element-plus'
 import axios from 'axios'
 import request from '@/utils/request'
-import { getVideoDuration } from '@/utils/computeDuration'
+import { getVideoDuration } from '@/utils/utils'
 import { useRouter } from 'vue-router'
 
 /**
