@@ -34,14 +34,20 @@
         <span class="count">{{ likeData.likeCount }}</span>
       </el-button>
 
+      <!-- 投币按钮 -->
       <el-button
         class="action-btn"
+        :class="{ 'coined': coinData.isCoined }"
         size="large"
-        @click="handleCoin"
+        :loading="coinLoading"
+        :disabled="coinData.isCoined"
+        @click="showCoinDialog"
       >
-        <el-icon><Coin /></el-icon>
-        <span>投币</span>
-        <span class="count">89</span>
+        <el-icon>
+          <Coin :class="{ 'coined-icon': coinData.isCoined }" />
+        </el-icon>
+        <span>{{ coinData.isCoined ? '已投币' : '投币' }}</span>
+        <span class="count">{{ coinData.coinCount }}</span>
       </el-button>
 
       <el-button
@@ -90,10 +96,61 @@
         </el-collapse-item>
       </el-collapse>
     </div>
+
+        <!-- 投币对话框 -->
+    <el-dialog
+      v-model="coinDialogVisible"
+      title="选择投币数量"
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <div class="coin-dialog-content">
+        <p class="coin-tip">为这个视频投币吧！投币后不可撤回哦~</p>
+        
+        <div class="coin-options">
+          <div 
+            class="coin-option"
+            :class="{ 'selected': selectedCoinAmount === 1 }"
+            @click="selectedCoinAmount = 1"
+          >
+            <div class="coin-icon">
+              <el-icon size="32"><Coin /></el-icon>
+            </div>
+            <div class="coin-text">投1个币</div>
+          </div>
+          
+          <div 
+            class="coin-option"
+            :class="{ 'selected': selectedCoinAmount === 2 }"
+            @click="selectedCoinAmount = 2"
+          >
+            <div class="coin-icon">
+              <el-icon size="32"><Coin /></el-icon>
+              <el-icon size="32"><Coin /></el-icon>
+            </div>
+            <div class="coin-text">投2个币</div>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="coinDialogVisible = false">取消</el-button>
+          <el-button 
+            type="primary" 
+            :disabled="!selectedCoinAmount"
+            @click="confirmCoin"
+          >
+            确认投币
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </el-card>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Star, Coin, Collection } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import type { VideoData } from '@/types/entity/video'
@@ -108,7 +165,12 @@ interface Props {
     isCollected: boolean
     collectCount: number
   }
+  coinData: {
+    isCoined: boolean
+    coinCount: number
+  }
   likeLoading: boolean
+  coinLoading: boolean
 }
 
 interface Emits {
@@ -119,6 +181,10 @@ interface Emits {
 
 defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+// 投币对话框相关
+const coinDialogVisible = ref(false)
+const selectedCoinAmount = ref(0)
 
 // 视频分区映射
 const areaMap: Record<number, string> = {
@@ -173,6 +239,20 @@ const formatCount = (count: number): string => {
   if (count < 10000) return (count / 1000).toFixed(1) + 'k'
   if (count < 100000000) return (count / 10000).toFixed(1) + '万'
   return (count / 100000000).toFixed(1) + '亿'
+}
+
+// 显示投币对话框
+const showCoinDialog = () => {
+  selectedCoinAmount.value = 0
+  coinDialogVisible.value = true
+}
+
+// 确认投币
+const confirmCoin = () => {
+  if (selectedCoinAmount.value > 0) {
+    emit('coin', selectedCoinAmount.value)
+    coinDialogVisible.value = false
+  }
 }
 
 // 交互事件处理
@@ -294,5 +374,89 @@ const handleFavorite = () => {
 .description-content p {
   margin: 8px 0;
   color: var(--el-text-color-regular);
+}
+
+/* 已投币状态 */
+.action-btn.coined {
+  border-color: var(--el-color-warning);
+  background: var(--el-color-warning-light-9);
+  color: var(--el-color-warning);
+}
+
+.coined-icon {
+  color: var(--el-color-warning);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.action-btn:disabled:hover {
+  border-color: var(--el-border-color);
+  background: var(--el-fill-color-blank);
+}
+
+/* 投币对话框样式 */
+.coin-dialog-content {
+  text-align: center;
+}
+
+.coin-tip {
+  margin-bottom: 24px;
+  color: var(--el-text-color-regular);
+  font-size: 14px;
+}
+
+.coin-options {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.coin-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  border: 2px solid var(--el-border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: var(--el-fill-color-blank);
+}
+
+.coin-option:hover {
+  border-color: var(--el-color-warning);
+  background: var(--el-color-warning-light-9);
+}
+
+.coin-option.selected {
+  border-color: var(--el-color-warning);
+  background: var(--el-color-warning-light-8);
+  box-shadow: 0 0 0 2px var(--el-color-warning-light-7);
+}
+
+.coin-icon {
+  display: flex;
+  gap: 4px;
+  color: var(--el-color-warning);
+}
+
+.coin-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.coin-option.selected .coin-text {
+  color: var(--el-color-warning);
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 </style>

@@ -18,7 +18,9 @@
           :video-data="videoData"
           :like-data="likeData"
           :collect-data="collectData"
+          :coin-data="coinData"
           :like-loading="likeLoading"
+          :coin-loading="coinLoading"
           @like="handleLike"
           @coin="handleCoin"
           @favorite="handleFavorite"
@@ -113,12 +115,10 @@ import VideoInfoActions from '../components/VideoPageComponents/VideoInfoActions
 import VideoPlayer from '../components/VideoPageComponents/VideoPlayer.vue'
 import VideoRecommendations from '../components/VideoPageComponents/VideoRecommendations.vue'
 
-
 const route = useRoute()
 const videoId = Number(route.params.videoId)
 
 // 环境变量
-// const MINIO_SERVER_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 const INTERACTION_SERVICE_URL = import.meta.env.VITE_INTERACTION_SERVICE_BASE_API;
 const MINIO_SERVICE_URL = import.meta.env.VITE_MINIO_SERVICE_BASE_API
 const VIDEO_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
@@ -134,6 +134,7 @@ const videoData = ref<VideoData>({
   title: '',
   type: false,
   duration: 0,
+  description:"",
   area: 0,
   tags: [],
   createAt: '',
@@ -149,6 +150,13 @@ const likeData = ref({
 })
 const likeLoading = ref(false)
 
+// 投币相关状态 - 移到这里
+const coinData = ref({
+  isCoined: false,
+  coinCount: 0
+})
+const coinLoading = ref(false)
+
 // 收藏相关状态
 const collectDialogVisible = ref(false)
 const collectionGroups = ref<CollectionGroup[]>([])
@@ -161,6 +169,57 @@ const collectData = ref({
   isCollected: false,
   collectCount: 0
 })
+
+// 加载投币信息 - 移到这里
+const loadCoinData = async () => {
+  try {
+    // 获取投币数量
+    const coinCountRes = await request.get(`${INTERACTION_SERVICE_URL}/video/coin-count`, {
+      params: { videoId: videoId }
+    })
+    
+    // 检查是否已投币
+    const isCoinedRes = await request.get(`${INTERACTION_SERVICE_URL}/video/is-coined`, {
+      params: { videoId: videoId }
+    })
+    
+    coinData.value = {
+      coinCount: coinCountRes.data?.data || 0,
+      isCoined: isCoinedRes.data?.data || false
+    }
+  } catch (error) {
+    console.error('加载投币信息失败:', error)
+  }
+}
+
+// 投币处理 - 移到这里
+const handleCoin = async (coinAmount: number) => {
+  if (coinData.value.isCoined) {
+    ElMessage.warning('您已经投过币了！')
+    return
+  }
+
+  coinLoading.value = true
+  
+  try {
+    await request.post(`${INTERACTION_SERVICE_URL}/video/coin`, {
+      videoId: videoId,
+      coin: coinAmount
+    })
+    
+    ElMessage.success(`投币成功！感谢您的${coinAmount}个硬币！`)
+    
+    // 更新投币状态
+    coinData.value.isCoined = true
+    coinData.value.coinCount += coinAmount
+    
+  } catch (error: any) {
+    console.error('投币失败:', error)
+    ElMessage.error(error.response?.data?.message || '投币失败，请重试')
+  } finally {
+    coinLoading.value = false
+  }
+}
 
 // 加载点赞信息
 const loadLikeInfo = async () => {
@@ -180,7 +239,6 @@ const loadLikeInfo = async () => {
     }
   } catch (error) {
     console.error('获取点赞信息失败:', error)
-    // 失败时使用默认值
     likeData.value = {
       isLiked: false,
       likeCount: 0
@@ -190,13 +248,12 @@ const loadLikeInfo = async () => {
 
 // 互动
 const handleLike = async () => {
-  if (likeLoading.value) return // 防止重复点击
+  if (likeLoading.value) return
 
   try {
     likeLoading.value = true
 
     if (likeData.value.isLiked) {
-      // 取消点赞
       const response = await request.delete(`${INTERACTION_SERVICE_URL}/video/like`, {
         params: {
           videoId: videoId
@@ -211,7 +268,6 @@ const handleLike = async () => {
         throw new Error(response.data.message || '取消点赞失败')
       }
     } else {
-      // 点赞
       const response = await request.post(`${INTERACTION_SERVICE_URL}/video/like`, null, {
         params: {
           videoId: videoId
@@ -241,7 +297,6 @@ const loadCollectionGroups = async () => {
 
     if (response.data.code === 200) {
       collectionGroups.value = response.data.data || []
-      // 默认选中第一个分组（通常是默认分组）
       if (collectionGroups.value.length > 0) {
         selectedGroupId.value = collectionGroups.value[0].id
       }
@@ -254,23 +309,13 @@ const loadCollectionGroups = async () => {
   }
 }
 
-const handleCoin = () => {
-  console.log('投币')
-  ElMessage.success('投币成功')
-}
-
 const handleFavorite = async () => {
-  // 打开收藏分组选择弹窗
   collectDialogVisible.value = true
-
-  // 加载收藏分组列表
   await loadCollectionGroups()
 
-  // 如果已收藏，预选当前分组
   if (collectData.value.isCollected && currentCollectedGroupId.value) {
     selectedGroupId.value = currentCollectedGroupId.value
   } else if (collectionGroups.value.length > 0) {
-    // 未收藏时默认选中第一个分组
     selectedGroupId.value = collectionGroups.value[0].id
   }
 }
@@ -286,7 +331,7 @@ const confirmCollect = async () => {
     collectLoading.value = true
 
     const addVideoCollectionDTO = {
-      userId: 0, // 后端会自动替换为当前用户ID
+      userId: 0,
       videoId: Number(videoId),
       groupId: selectedGroupId.value,
       collectedAt: new Date()
@@ -300,11 +345,9 @@ const confirmCollect = async () => {
       ElMessage.success('收藏成功')
       collectDialogVisible.value = false
 
-      // 更新收藏状态
       collectData.value.isCollected = true
       currentCollectedGroupId.value = selectedGroupId.value
 
-      // 如果之前未收藏，收藏数量+1
       if (!wasCollected) {
         collectData.value.collectCount += 1
       }
@@ -329,8 +372,7 @@ const cancelCollect = () => {
 
 // 构建视频流URL
 const buildVideoStreamUrl = (videoUrl: string): string => {
-  // 使用您提供的分片视频流接口
-  const bucketName = 'video' // 假设视频存储在 video 桶中
+  const bucketName = 'video'
   const encodedVideoUrl = encodeURIComponent(videoUrl)
   
   return `${MINIO_SERVICE_URL}/upload/video-slice/${bucketName}?objectName=${encodedVideoUrl}`
@@ -339,7 +381,6 @@ const buildVideoStreamUrl = (videoUrl: string): string => {
 // 加载收藏信息
 const loadCollectInfo = async () => {
   try {
-    // 获取收藏数量
     const countResponse = await request.get(`${INTERACTION_SERVICE_URL}/video/video-collect-count`, {
       params: {
         videoId: videoId
@@ -350,7 +391,6 @@ const loadCollectInfo = async () => {
       collectData.value.collectCount = countResponse.data.data || 0
     }
 
-    // 使用新接口检查是否已收藏
     const isCollectedResponse = await request.get(`${INTERACTION_SERVICE_URL}/video/is-video-collected`, {
       params: {
         videoId: videoId
@@ -361,11 +401,9 @@ const loadCollectInfo = async () => {
       const groupId = isCollectedResponse.data.data
 
       if (groupId !== null) {
-        // 已收藏，记录收藏状态和分组ID
         collectData.value.isCollected = true
         currentCollectedGroupId.value = groupId
       } else {
-        // 未收藏
         collectData.value.isCollected = false
         currentCollectedGroupId.value = null
       }
@@ -373,7 +411,6 @@ const loadCollectInfo = async () => {
 
   } catch (error) {
     console.error('获取收藏信息失败:', error)
-    // 失败时使用默认值
     collectData.value = {
       isCollected: false,
       collectCount: 0
@@ -389,7 +426,7 @@ const loadVideoInfo = async () => {
     error.value = false
 
     console.log('加载视频信息:', videoId)
-    // 添加视频记录
+    
     const hisResponse = await request.post(`${VIDEO_SERVER_URL}/video/video-views`, videoId, {
       headers: {
         'Content-Type': 'application/json'
@@ -399,13 +436,13 @@ const loadVideoInfo = async () => {
       ElMessage.error('添加历史记录失败:', hisResponse.data.data)
     }
 
-    // 并行加载点赞信息和收藏信息
-    const [,] = await Promise.all([
+    // 并行加载所有信息
+    await Promise.all([
       loadLikeInfo(),
-      loadCollectInfo() // 加载收藏信息
+      loadCollectInfo(),
+      loadCoinData()
     ])
 
-    // 调用后端接口获取视频信息
     const response = await request.get(`${VIDEO_SERVER_URL}/video/id`, {
       params: {
         videoId: videoId
@@ -422,7 +459,6 @@ const loadVideoInfo = async () => {
 
     console.log(data)
 
-    // 构建视频流URL
     if (data.videoUrl) {
       videoStreamUrl.value = buildVideoStreamUrl(data.videoUrl)
       console.log('视频流URL:', videoStreamUrl.value)
