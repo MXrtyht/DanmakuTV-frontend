@@ -1,5 +1,8 @@
 <template>
-  <HeaderBar :sticky="false" :show-search="false" />
+  <HeaderBar
+    :sticky="false"
+    :show-search="false"
+  />
   <div class="search-results-page">
     <!-- 顶部搜索框 -->
     <div class="search-section">
@@ -13,21 +16,37 @@
           @keyup.enter="handleSearch"
         >
           <template #append>
-            <el-button @click="handleSearch" :icon="Search" type="primary" />
+            <el-button
+              @click="handleSearch"
+              :icon="Search"
+              type="primary"
+            />
           </template>
         </el-input>
       </div>
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="loading" class="loading-container">
-      <el-skeleton :rows="5" animated />
+    <div
+      v-if="loading"
+      class="loading-container"
+    >
+      <el-skeleton
+        :rows="5"
+        animated
+      />
     </div>
 
     <!-- 搜索结果内容 -->
-    <div v-else-if="searchResults" class="results-container">
+    <div
+      v-else-if="searchResults"
+      class="results-container"
+    >
       <!-- 中层：匹配度最高的用户 -->
-      <div v-if="searchResults.topUser" class="user-section">
+      <div
+        v-if="searchResults.topUser"
+        class="user-section"
+      >
         <div class="section-title">
           <h2>相关用户</h2>
         </div>
@@ -35,18 +54,27 @@
         <div class="user-card">
           <!-- 用户信息部分 -->
           <div class="user-info">
-            <el-avatar :src="searchResults.topUser.avatar" :size="60" class="user-avatar">
-              <el-icon v-if="!searchResults.topUser.avatar"><User /></el-icon>
+            <el-avatar
+              :src="searchResults.topUser.avatar"
+              :size="60"
+              class="user-avatar"
+            >
+              <el-icon v-if="!searchResults.topUser.avatar">
+                <User />
+              </el-icon>
             </el-avatar>
             <div class="user-details">
               <div class="user-header">
                 <el-button
-                  type="primary"
+                  :type="searchResults.topUser.isFollowed ? 'info' : 'primary'"
                   size="small"
                   class="follow-btn"
+                  :class="{ 'followed': searchResults.topUser.isFollowed }"
                   @click="handleFollowUser(searchResults.topUser.id)"
+                  @mouseenter="handleFollowBtnHover(true)"
+                  @mouseleave="handleFollowBtnHover(false)"
                 >
-                  关注
+                  {{ getFollowButtonText(searchResults.topUser.isFollowed) }}
                 </el-button>
                 <h3 class="user-name">{{ searchResults.topUser.name }}</h3>
               </div>
@@ -56,7 +84,10 @@
                 <!-- <span class="separator">·</span>
                 <span>{{ formatNumber(searchResults.topUser.videoCount) }} 作品</span> -->
               </p>
-              <p v-if="searchResults.topUser.description" class="user-description">
+              <p
+                v-if="searchResults.topUser.description"
+                class="user-description"
+              >
                 {{ searchResults.topUser.description }}
               </p>
             </div>
@@ -124,35 +155,48 @@
           class="no-results"
         >
           <el-empty description="暂无搜索结果">
-            <el-button type="primary" @click="clearSearch">重新搜索</el-button>
+            <el-button
+              type="primary"
+              @click="clearSearch"
+            >重新搜索</el-button>
           </el-empty>
         </div>
       </div>
 
       <!-- 初始状态 -->
-      <div v-else class="initial-state">
+      <div
+        v-else
+        class="initial-state"
+      >
         <el-empty description="输入关键词开始搜索" />
       </div>
     </div>
   </div>
+
+  <!-- 关注分组选择器 -->
+  <FollowGroupSelector
+    v-model="showFollowDialog"
+    title="选择关注分组"
+    @confirm="handleFollowConfirm"
+    @cancel="handleFollowCancel"
+  />
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import { ref, onMounted } from 'vue'
-import { Search,User } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import VideoCard from '@/components/videoCard/VideoCard.vue'
+import FollowGroupSelector from '@/components/FollowGroupSelector/FollowGroupSelector.vue'
 import HeaderBar from '@/components/headerBar/HeaderBar.vue'
-import type { VideoVO } from '@/types/entity/video'
-import axios from 'axios'
-import request from '@/utils/request'
-import type { VideoData } from '@/types/entity/video'
-import type { PageResponse, IPage } from '@/types/api/iPage'
-import type { GenreResponse } from '@/types/response/genreResponse'
+import VideoCard from '@/components/videoCard/VideoCard.vue'
+import type { IPage } from '@/types/api/iPage'
 import type { UserProfile } from '@/types/entity/user'
-// import type { VideoCountVO } from '@/types/response/videoResponse'
+import type { VideoData, VideoVO } from '@/types/entity/video'
+import type { GenreResponse } from '@/types/response/genreResponse'
+import request from '@/utils/request'
 import { getVideoPlayCountBatch } from '@/utils/utils'
+import { Search, User } from '@element-plus/icons-vue'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const BASE_VEDIO_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 const BASE_USER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
@@ -160,6 +204,47 @@ const BASE_SEARCH_URL = import.meta.env.VITE_SEARCH_SERVICE_BASE_API
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
 const router = useRouter()
+
+// 新增类型定义
+interface Page<T> {
+  content: T[]
+  totalElements: number
+  totalPages: number
+  size: number
+  number: number
+  first: boolean
+  last: boolean
+  numberOfElements: number
+  empty: boolean
+}
+
+interface VideoES {
+  id: number
+  userId: number
+  videoUrl: string
+  coverUrl: string
+  title: string
+  description: string
+  type: boolean
+  duration: number
+  area: boolean
+  createAt: string
+  updateAt: string
+}
+
+interface UserProfilesES {
+  id: number
+  userId: number
+  nickname: string
+  gender: boolean
+  birthday: string
+  sign: string
+  announcement: string
+  avatar: string
+  coin: number
+  createAt: string
+  updateAt: string
+}
 
 // 数据类型定义
 interface UserSearchInfo {
@@ -170,6 +255,7 @@ interface UserSearchInfo {
   // videoCount?: number
   description?: string
   videos?: VideoVO[]
+  isFollowed?: boolean // 添加关注状态
 }
 
 interface SearchResults {
@@ -182,6 +268,9 @@ interface SearchResults {
 const searchKeyword = ref('')
 const searchResults = ref<SearchResults>({ videos: [], totalCount: 0 })
 const loading = ref(false)
+const showFollowDialog = ref(false)
+const currentFollowUserId = ref<number | null>(null)
+const isHoveringFollowBtn = ref(false)
 
 const pagination = ref({
   size: 10,
@@ -225,104 +314,125 @@ const handleSearch = async () => {
   }
 }
 
-// 搜索用户
+// 修正后的搜索用户方法
 const getSearchUserInfo = async () => {
   let userInfo: UserSearchInfo | undefined = undefined
 
-  const userRes = await request.get<GenreResponse<PageResponse<UserProfile>>>(
+  const userRes = await request.get<GenreResponse<Page<UserProfilesES>>>(
     `${BASE_SEARCH_URL}/search/user-page`,
     {
       params: {
         nickname: searchKeyword.value,
-        page: pagination.value.page - 1, // 后端页码从0开始，前端从1开始
+        page: pagination.value.page - 1,
         size: pagination.value.size,
       },
     },
   )
+
   if (userRes.data.code !== 200 || !userRes.data.data) {
-    console.error('搜索用户失败:', userRes.data.data)
+    console.error('搜索用户失败:', userRes.data.message)
     ElMessage.error(userRes.data.message || '搜索用户失败')
     return userInfo
   }
 
-  // 2. 映射用户数据
-  const userPageData = userRes.data.data as PageResponse<UserProfile>
-  // console.log(userPageData)
+  // 使用ES返回的Page结构
+  const userPageData = userRes.data.data as Page<UserProfilesES>
+
   if (userPageData.content.length > 0) {
     const topUser = userPageData.content[0]
     userInfo = {
-      id: topUser.id,
+      id: topUser.userId, // ES中使用userId
       name: topUser.nickname,
       avatar: `${BASE_MINIO_URL}/avatar/${topUser.avatar}`,
       description: topUser.sign,
     }
+
+    // 获取用户粉丝数
+    try {
+      const userFollowCount = await request.get(`${BASE_USER_URL}/user/fans-count-by-id`, {
+        params: {
+          userId: topUser.userId
+        }
+      })
+
+      if (userFollowCount.data.code === 200) {
+        userInfo.followers = userFollowCount.data.data as number
+      }
+    } catch (error) {
+      console.error('获取用户粉丝数失败:', error)
+      userInfo.followers = 0
+    }
+
+    // 检查是否已关注该用户
+    try {
+      const followStatusRes = await request.get(`${BASE_USER_URL}/user/is-following`, {
+        params: {
+          followId: topUser.userId
+        }
+      })
+
+      if (followStatusRes.data.code === 200) {
+        userInfo.isFollowed = followStatusRes.data.data as boolean
+      }
+    } catch (error) {
+      console.error('检查关注状态失败:', error)
+      userInfo.isFollowed = false
+    }
+
+    // 使用正确的接口获取用户视频
+    try {
+      const userVideoRes = await request.get<GenreResponse<IPage<VideoData>>>(
+        `${BASE_VEDIO_URL}/video/user-videos-by-id`,
+        {
+          params: {
+            userId: topUser.userId,
+            page: 0,
+            size: 4,
+          },
+        },
+      )
+
+      if (userVideoRes.data.code === 200 && userVideoRes.data.data) {
+        const pageData = userVideoRes.data.data as IPage<VideoData>
+        userInfo.videos = pageData.records.map((video) => ({
+          ...video,
+          uploaderAvatar: topUser.avatar,
+          uploaderName: topUser.nickname,
+        }))
+
+        // 获取播放量
+        const videoIdList: number[] = pageData.records.map((video) => video.id)
+        const videoCountRes = await getVideoPlayCountBatch(
+          videoIdList,
+          `${BASE_VEDIO_URL}/video/video-view-counts-batch`,
+        )
+
+        if (videoCountRes !== undefined) {
+          userInfo.videos.forEach((video) => {
+            video.playCount = videoCountRes.get(video.id) || 0
+          })
+        }
+      }
+    } catch (error) {
+      console.error('获取用户视频失败:', error)
+      userInfo.videos = []
+    }
   }
-  // 如果没有找到用户信息，返回undefined
-  else {
-    return userInfo
-  }
 
-  // 3. 获取用户的粉丝数和视频数
-  const userFollowCount = await request.get(`${BASE_USER_URL}/user/follow-count`)
-  if (userFollowCount.data.code !== 200 || !userFollowCount.data.data) {
-    console.error('获取用户粉丝数失败:', userFollowCount.data.message)
-    ElMessage.error('获取用户粉丝数失败，请稍后再试')
-  }
-  userInfo.followers = userFollowCount.data.data as number
-
-  // 4. 获取用户的视频，这里只获取4个视频
-  const userVideoRes = await request.get<GenreResponse<IPage<VideoData>>>(
-    `${BASE_VEDIO_URL}/video/user`,
-    {
-      params: {
-        page: 0, // 后端页码从0开始，前端从1开始
-        size: 4, // 只获取4个视频
-      },
-    },
-  )
-
-  if (userVideoRes.data.code !== 200 || !userVideoRes.data.data) {
-    console.error('获取用户视频失败:', userVideoRes.data.message)
-    ElMessage.error('获取用户视频失败，请稍后再试')
-  }
-
-  const pageData = userVideoRes.data.data as IPage<VideoData>
-  userInfo.videos = pageData.records as VideoData[]
-
-  // 5. 填写VideoCard数据
-  userInfo.videos = userInfo.videos.map((video) => ({
-    ...video,
-    uploaderAvatar: userPageData.content[0].avatar,
-    uploaderName: userPageData.content[0].nickname,
-  }))
-
-  const videoIdList: number[] = pageData.records.map((video) => video.id)
-  const videoCountRes = await getVideoPlayCountBatch(
-    videoIdList,
-    `${BASE_VEDIO_URL}/video/video-view-counts-batch`,
-  )
-  if (videoCountRes != undefined) {
-    // 更新 playCount
-    userInfo.videos.forEach((video) => {
-      video.playCount = videoCountRes.get(video.id) || 0
-    })
-  }
-  // 返回结果
   return userInfo
 }
 
-// 搜索视频
+// 修正后的搜索视频方法
 const getSearchVideoInfo = async () => {
   let videoInfo: VideoVO[] | undefined = undefined
   let total: number = 0
 
-  // 1. 调用接口搜索视频信息
-  const videoRes = await request.get<GenreResponse<PageResponse<VideoData>>>(
+  const videoRes = await request.get<GenreResponse<Page<VideoES>>>(
     `${BASE_SEARCH_URL}/search/video-page`,
     {
       params: {
         keyword: searchKeyword.value,
-        page: pagination.value.page - 1, // 后端页码从0开始，前端从1开始
+        page: pagination.value.page - 1,
         size: pagination.value.size,
       },
     },
@@ -334,78 +444,187 @@ const getSearchVideoInfo = async () => {
     return { result: videoInfo, total: total }
   }
 
-  // 2. 映射数据到前端分页结构
-  const pageData = videoRes.data.data as PageResponse<VideoData>
+  // 使用ES返回的Page结构
+  const pageData = videoRes.data.data as Page<VideoES>
+
   if (pageData.content.length > 0) {
-    videoInfo = pageData.content
+    // 将ES数据转换为VideoData格式
+    videoInfo = pageData.content.map(esVideo => ({
+      id: esVideo.id,
+      userId: esVideo.userId,
+      videoUrl: esVideo.videoUrl,
+      coverUrl: esVideo.coverUrl,
+      title: esVideo.title,
+      description: esVideo.description,
+      type: esVideo.type,
+      duration: esVideo.duration,
+      area: esVideo.area ? 1 : 0,
+      createAt: esVideo.createAt,
+      updateAt: esVideo.updateAt,
+    })) as VideoData[]
+
+    total = pageData.totalElements
+
+    // 获取用户信息
+    const userIdList: number[] = pageData.content.map((video) => video.userId)
+
+    try {
+      const userInfoRes = await request.post(`${BASE_USER_URL}/user/batch`, userIdList)
+
+      if (userInfoRes.data.code === 200 && userInfoRes.data.data) {
+        const userInfo = userInfoRes.data.data as UserProfile[]
+        const userMap = new Map<number, UserProfile>()
+        userInfo.forEach((user) => {
+          userMap.set(user.userId, user)
+        })
+
+        videoInfo = videoInfo.map((video) => {
+          const uploader = userMap.get(video.userId)
+          return {
+            ...video,
+            uploaderName: uploader?.nickname,
+            uploaderAvatar: uploader?.avatar,
+          }
+        })
+      }
+    } catch (error) {
+      console.error('批量获取用户信息失败:', error)
+    }
+
+    // 获取播放量
+    const videoIdList: number[] = pageData.content.map((video) => video.id)
+    try {
+      const videoCountRes = await getVideoPlayCountBatch(
+        videoIdList,
+        `${BASE_VEDIO_URL}/video/video-view-counts-batch`,
+      )
+
+      if (videoCountRes !== undefined) {
+        videoInfo.forEach((video) => {
+          video.playCount = videoCountRes.get(video.id) || 0
+        })
+      }
+    } catch (error) {
+      console.error('获取视频播放量失败:', error)
+    }
   } else {
-    // 此时的videoInfo还是undefinded
     return { result: videoInfo, total: total }
   }
-  // 3. 设置视频总数
-  total = pageData.totalElements
 
-  // 4. 填写VideoCard信息
-
-  // 首先获取到userId列表
-  const userIdList: number[] = pageData.content.map((video) => video.userId)
-  const videoIdList: number[] = pageData.content.map((video) => video.id)
-
-  // 然后批量请求用户信息
-  const userInfoRes = await request.post(`${BASE_USER_URL}/user/batch`, userIdList)
-  if (userInfoRes.data.code != 200 || !userInfoRes.data.data) {
-    ElMessage.error('获取用户信息失败')
-    console.log('批量获取用户信息失败：', userInfoRes.data.data)
-  }
-  const userInfo = userInfoRes.data.data as UserProfile[]
-  const userMap = new Map<number, UserProfile>()
-  userInfo.forEach((user) => {
-    userMap.set(user.userId, user)
-  })
-  // console.log(userMap)
-  videoInfo = videoInfo.map((video) => {
-    const uploader = userMap.get(video.userId)
-    return {
-      ...video,
-      uploaderName: uploader?.nickname,
-      uploaderAvatar: uploader?.avatar,
-    }
-  })
-  // console.log(videoInfo)
-  // 再填写播放量
-  const videoCountRes = await getVideoPlayCountBatch(
-    videoIdList,
-    `${BASE_VEDIO_URL}/video/video-view-counts-batch`,
-  )
-  if (videoCountRes != undefined) {
-    // 更新 playCount
-    videoInfo.forEach((video) => {
-      video.playCount = videoCountRes.get(video.id) || 0
-    })
-  }
   return { result: videoInfo, total: total }
 }
 
-//处理用户关注
+// 修正后的关注用户方法
 const handleFollowUser = async (userId: number) => {
+  const user = searchResults.value.topUser
+  if (!user) return
+
+  if (user.isFollowed) {
+    // 已关注，执行取关操作
+    await handleUnfollowUser(userId)
+  } else {
+    // 未关注，显示关注分组选择器
+    currentFollowUserId.value = userId
+    showFollowDialog.value = true
+  }
+}
+
+// 处理关注确认
+const handleFollowConfirm = async (groupId: number) => {
+  if (!currentFollowUserId.value) {
+    ElMessage.error('用户信息错误')
+    return
+  }
+
   try {
-    // 调用关注用户API
-    const response = await request.post(`/user/follow/${userId}`)
+    // 使用正确的DTO格式
+    const followDTO = {
+      followId: currentFollowUserId.value,
+      groupId: groupId
+    }
+
+    const response = await request.post(`${BASE_USER_URL}/user/follow`, followDTO)
+
     if (response.data.code !== 200) {
       console.error('关注失败:', response.data.message)
-      ElMessage.error('关注失败，请稍后再试')
+      ElMessage.error(response.data.message || '关注失败，请稍后再试')
       return
     }
     ElMessage.success('关注成功')
+
+    // 更新用户关注状态
+    if (searchResults.value.topUser && searchResults.value.topUser.id === currentFollowUserId.value) {
+      searchResults.value.topUser.isFollowed = true
+    }
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
-      console.error('注册失败:', error.response.data.message)
+      console.error('关注失败:', error.response.data.message)
+      ElMessage.error(error.response.data.message || '关注失败')
     } else if (error instanceof Error) {
       console.error('请求失败:', error.message)
+      ElMessage.error('关注失败，请稍后再试')
     } else {
       console.error('请求失败: 未知错误')
+      ElMessage.error('关注失败，请稍后再试')
+    }
+  } finally {
+    currentFollowUserId.value = null
+  }
+}
+
+// 处理取关操作
+const handleUnfollowUser = async (userId: number) => {
+  try {
+    const unfollowDTO = {
+      userId: 0, // 当前用户ID，通常由后端从token获取
+      followId: userId,
+      groupId: 1 // 默认分组，实际应该获取用户所在的分组
+    }
+
+    const response = await request.post(`${BASE_USER_URL}/user/unfollow`, unfollowDTO)
+
+    if (response.data.code !== 200) {
+      console.error('取关失败:', response.data.message)
+      ElMessage.error(response.data.message || '取关失败，请稍后再试')
+      return
+    }
+
+    ElMessage.success('取消关注成功')
+
+    // 更新用户关注状态
+    if (searchResults.value.topUser && searchResults.value.topUser.id === userId) {
+      searchResults.value.topUser.isFollowed = false
+    }
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('取关失败:', error.response.data.message)
+      ElMessage.error(error.response.data.message || '取关失败')
+    } else if (error instanceof Error) {
+      console.error('请求失败:', error.message)
+      ElMessage.error('取关失败，请稍后再试')
+    } else {
+      console.error('请求失败: 未知错误')
+      ElMessage.error('取关失败，请稍后再试')
     }
   }
+}
+
+// 处理关注取消
+const handleFollowCancel = () => {
+  currentFollowUserId.value = null
+}
+
+// 处理关注按钮悬停
+const handleFollowBtnHover = (isHovering: boolean) => {
+  isHoveringFollowBtn.value = isHovering
+}
+
+// 获取关注按钮文本
+const getFollowButtonText = (isFollowed: boolean | undefined) => {
+  if (!isFollowed) {
+    return '关注'
+  }
+  return isHoveringFollowBtn.value ? '取消关注' : '已关注'
 }
 
 // 视频跳转
@@ -448,7 +667,7 @@ const handlePageChange = async () => {
     }
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response) {
-      console.error('注册失败:', error.response.data.message)
+      console.error('翻页失败:', error.response.data.message)
     } else if (error instanceof Error) {
       console.error('请求失败:', error.message)
     } else {
@@ -561,6 +780,19 @@ onMounted(() => {
   border-radius: 20px;
   padding: 4px 16px;
   font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+.follow-btn.followed {
+  background-color: #f5f7fa;
+  border-color: #d3d3d3;
+  color: #909399;
+}
+
+.follow-btn.followed:hover {
+  background-color: #f56c6c !important;
+  border-color: #f56c6c !important;
+  color: white !important;
 }
 
 .user-name {

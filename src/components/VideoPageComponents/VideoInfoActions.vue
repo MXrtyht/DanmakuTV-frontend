@@ -175,7 +175,7 @@ interface Props {
 
 interface Emits {
   (e: 'like'): void
-  (e: 'coin'): void
+  (e: 'coin', coinAmount: number): void
   (e: 'favorite'): void
 }
 
@@ -258,12 +258,6 @@ const confirmCoin = () => {
 // 交互事件处理
 const handleLike = () => {
   emit('like')
-}
-
-const handleCoin = () => {
-  console.log('投币')
-  ElMessage.success('投币成功')
-  emit('coin')
 }
 
 const handleFavorite = () => {

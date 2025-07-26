@@ -171,24 +171,38 @@ const collectData = ref({
 })
 
 // 加载投币信息 - 移到这里
+// 修改 loadCoinData 函数，确保正确解析响应数据
 const loadCoinData = async () => {
   try {
+    console.log('开始加载投币信息，videoId:', videoId)
+    
     // 获取投币数量
     const coinCountRes = await request.get(`${INTERACTION_SERVICE_URL}/video/coin-count`, {
       params: { videoId: videoId }
     })
+    console.log('投币数量响应:', coinCountRes)
     
     // 检查是否已投币
     const isCoinedRes = await request.get(`${INTERACTION_SERVICE_URL}/video/is-coined`, {
       params: { videoId: videoId }
     })
+    console.log('是否已投币响应:', isCoinedRes)
     
+    // 确保正确解析响应数据结构
     coinData.value = {
-      coinCount: coinCountRes.data?.data || 0,
-      isCoined: isCoinedRes.data?.data || false
+      coinCount: coinCountRes.data?.data ?? 0,  // 使用 ?? 替代 ||
+      isCoined: isCoinedRes.data?.data ?? false
     }
+    
+    console.log('投币数据更新为:', coinData.value)
+    
   } catch (error) {
     console.error('加载投币信息失败:', error)
+    // 确保失败时有默认值
+    coinData.value = {
+      coinCount: 0,
+      isCoined: false
+    }
   }
 }
 

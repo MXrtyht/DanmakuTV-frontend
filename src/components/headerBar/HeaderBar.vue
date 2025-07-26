@@ -10,14 +10,21 @@
     >
       <!-- 左侧 Logo -->
       <div class="left-section">
-        <el-menu-item index="logo" class="logo-item" @click="goHome">
+        <el-menu-item
+          index="logo"
+          class="logo-item"
+          @click="goHome"
+        >
           <span class="logo-text">DanmakuTV</span>
         </el-menu-item>
       </div>
 
       <!-- 中间搜索框 -->
       <!-- 中间搜索框（通过 showSearch 控制） -->
-      <div class="center-section" v-if="showSearch">
+      <div
+        class="center-section"
+        v-if="showSearch"
+      >
         <el-input
           v-model="searchKeyword"
           placeholder="搜索视频、UP主"
@@ -26,17 +33,31 @@
           size="default"
           @keyup.enter="handleSearch"
         >
-          <template #append> <el-button @click="handleSearch" :icon="Search" /> </template>
+          <template #append> <el-button
+              @click="handleSearch"
+              :icon="Search"
+            /> </template>
         </el-input>
       </div>
       <!-- 搜索框占位（当不显示搜索框时） -->
-      <div class="center-section placeholder" v-else></div>
+      <div
+        class="center-section placeholder"
+        v-else
+      ></div>
 
       <!-- 右侧导航项 -->
       <div class="right-section">
         <!-- 用户头像 -->
-        <el-dropdown trigger="click" @command="handleCommand">
-          <el-avatar :size="36" :src="userInfo.avatar" class="user-avatar" style="cursor: pointer">
+        <el-dropdown
+          trigger="click"
+          @command="handleCommand"
+        >
+          <el-avatar
+            :size="36"
+            :src="userInfo.avatar"
+            class="user-avatar"
+            style="cursor: pointer"
+          >
             <el-icon>
               <User />
             </el-icon>
@@ -45,28 +66,49 @@
             <el-dropdown-menu>
               <el-dropdown-item command="profile">个人中心</el-dropdown-item>
               <el-dropdown-item command="settings">设置</el-dropdown-item>
-              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
+              <el-dropdown-item
+                divided
+                command="logout"
+              >退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
 
         <!-- 动态 -->
-        <el-menu-item index="dynamic" class="nav-menu-item" @click="handleDynamic">
+        <el-menu-item
+          index="dynamic"
+          class="nav-menu-item"
+          @click="handleDynamic"
+        >
           <span>动态</span>
         </el-menu-item>
 
         <!-- 收藏 -->
-        <el-menu-item index="favorite" class="nav-menu-item" @click="handleFavorite">
+        <el-menu-item
+          index="favorite"
+          class="nav-menu-item"
+          @click="handleFavorite"
+        >
           <span>收藏</span>
         </el-menu-item>
 
         <!-- 历史 -->
-        <el-menu-item index="history" class="nav-menu-item" @click="handleHistory">
+        <el-menu-item
+          index="history"
+          class="nav-menu-item"
+          @click="handleHistory"
+        >
           <span>历史</span>
         </el-menu-item>
 
         <!-- 投稿按钮 -->
-        <el-button type="primary" class="upload-btn" size="default" round @click="handleUpload">
+        <el-button
+          type="primary"
+          class="upload-btn"
+          size="default"
+          round
+          @click="handleUpload"
+        >
           投稿
         </el-button>
       </div>
@@ -75,14 +117,16 @@
 </template>
 
 <script setup lang="ts">
+import { useAuthStore } from '@/stores/authentication'
+import type { UserInfo } from '@/types/entity/user'
+import request from '@/utils/request'
 import { Search, User } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import request from '@/utils/request'
-import type { UserInfo } from '@/types/entity/user'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
@@ -187,9 +231,38 @@ const handleCommand = (command: string) => {
       router.push('/home/edit')
       break
     case 'logout':
-      ElMessage.warning('退出登录功能待实现')
-      // TODO: 实现退出登录
+      handleLogout()
       break
+  }
+}
+
+// 处理退出登录
+const handleLogout = async () => {
+  try {
+    // 显示确认对话框
+    await ElMessageBox.confirm(
+      '确定要退出登录吗？',
+      '退出登录',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+        center: true
+      }
+    )
+
+    // 用户确认退出，清除本地存储的token
+    authStore.clearToken()
+
+    // 显示退出成功消息
+    ElMessage.success('退出登录成功')
+
+    // 跳转到登录页面
+    router.push('/login')
+
+  } catch {
+    // 用户取消退出登录，什么都不做
+    console.log('用户取消退出登录')
   }
 }
 
@@ -257,8 +330,10 @@ onMounted(() => {
   /* 保持与搜索框相同的尺寸 */
   width: 100%;
   max-width: 500px;
-  height: 40px; /* 与输入框高度一致 */
-  margin: 0 40px; /* 透明占位，不干扰布局 */
+  height: 40px;
+  /* 与输入框高度一致 */
+  margin: 0 40px;
+  /* 透明占位，不干扰布局 */
   visibility: hidden;
 }
 
@@ -312,7 +387,7 @@ onMounted(() => {
 }
 
 /* 移除菜单项的默认下划线 */
-.el-menu--horizontal > .el-menu-item {
+.el-menu--horizontal>.el-menu-item {
   border-bottom: none !important;
 }
 

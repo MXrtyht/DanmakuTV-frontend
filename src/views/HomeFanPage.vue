@@ -30,10 +30,20 @@
         />
       </el-col>
     </el-row>
+
+    <!-- 关注分组选择弹窗 -->
+    <FollowGroupSelector
+      v-model="followDialogVisible"
+      title="选择关注分组"
+      confirm-text="确认回关"
+      @confirm="handleFollowConfirm"
+      @cancel="handleFollowCancel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import FollowGroupSelector from '@/components/FollowGroupSelector/FollowGroupSelector.vue';
 import UserCard from '@/components/userCard/UserCard.vue';
 import type { UserCardInfo, UserProfile } from '@/types/entity/user';
 import type { UserFollowRequest, UserUnfollowRequest } from '@/types/request/userRequest';
@@ -48,6 +58,11 @@ const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
 
 // 存储粉丝数据
 const fansList = ref<UserFanResponse[]>([]);
+
+// 关注分组选择弹窗状态
+const followDialogVisible = ref(false);
+let pendingFollowUserId: number | null = null;
+let pendingOnFailure: (() => void) | null = null;
 
 // 加载粉丝数据
 const loadData = async () => {
@@ -110,34 +125,89 @@ const handleFollowChange = async ({ newState, userId, onFailure }: {
 }) => {
   console.log('状态变化:', newState, 'userId:', userId);
 
+  if (newState) {
+    // 回关操作 - 显示分组选择弹窗
+    pendingFollowUserId = userId;
+    pendingOnFailure = onFailure;
+    followDialogVisible.value = true;
+  } else {
+    // 取关操作 - 直接执行
+    await executeUnfollow(userId, onFailure);
+  }
+};
+
+// 关注分组选择确认
+const handleFollowConfirm = async (groupId: number) => {
+  if (pendingFollowUserId === null || pendingOnFailure === null) return;
+
   try {
-    let requestBody: UserFollowRequest | UserUnfollowRequest;
-    let endpoint: string;
+    const requestBody: UserFollowRequest = {
+      userId: 0,
+      followId: pendingFollowUserId,
+      groupId: groupId,
+      createAt: new Date().toISOString()
+    };
 
-    if (newState) {
-      // 回关操作
-      endpoint = `${BASE_SERVER_URL}/user/follow`;
-      requestBody = {
-        userId: 0,
-        followId: userId,
-        groupId: 1,
-        createAt: new Date().toISOString()
-      } as UserFollowRequest;
-    } else {
-      // 取关操作
-      endpoint = `${BASE_SERVER_URL}/user/unfollow`;
-      requestBody = {
-        userId: 0,
-        followId: userId,
-        groupId: 0
-      } as UserUnfollowRequest;
-    }
-
-    const response = await request.post(endpoint, requestBody);
+    const response = await request.post(`${BASE_SERVER_URL}/user/follow`, requestBody);
 
     if (response.data.code !== 200) {
-      console.error('操作失败:', response.data.message);
-      ElMessage.error('操作失败');
+      console.error('回关失败:', response.data.message);
+      ElMessage.error('回关失败');
+      pendingOnFailure();
+      return;
+    }
+
+    // 更新本地状态
+    const fanIndex = fansList.value.findIndex(fan =>
+      fan.profile.userId === pendingFollowUserId
+    );
+
+    if (fanIndex !== -1) {
+      fansList.value[fanIndex].isFollowing = true;
+    }
+
+    ElMessage.success('回关成功');
+
+  } catch (error: unknown) {
+    if (pendingOnFailure) pendingOnFailure();
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('回关失败:', error.response.data.message);
+    } else if (error instanceof Error) {
+      console.error('回关失败:', error.message);
+    } else {
+      console.error('回关失败: 未知错误');
+    }
+    ElMessage.error('回关失败');
+  } finally {
+    // 清理状态
+    pendingFollowUserId = null;
+    pendingOnFailure = null;
+  }
+};
+
+// 关注分组选择取消
+const handleFollowCancel = () => {
+  if (pendingOnFailure) {
+    pendingOnFailure();
+  }
+  pendingFollowUserId = null;
+  pendingOnFailure = null;
+};
+
+// 执行取关操作
+const executeUnfollow = async (userId: number, onFailure: () => void) => {
+  try {
+    const requestBody: UserUnfollowRequest = {
+      userId: 0,
+      followId: userId,
+      groupId: 0
+    };
+
+    const response = await request.post(`${BASE_SERVER_URL}/user/unfollow`, requestBody);
+
+    if (response.data.code !== 200) {
+      console.error('取关失败:', response.data.message);
+      ElMessage.error('取关失败');
       onFailure();
       return;
     }
@@ -148,23 +218,23 @@ const handleFollowChange = async ({ newState, userId, onFailure }: {
     );
 
     if (fanIndex !== -1) {
-      fansList.value[fanIndex].isFollowing = newState;
+      fansList.value[fanIndex].isFollowing = false;
     }
 
-    ElMessage.success(newState ? '回关成功' : '取消回关成功');
+    ElMessage.success('取消回关成功');
 
   } catch (error: unknown) {
     onFailure();
     if (axios.isAxiosError(error) && error.response) {
-      console.error('请求失败:', error.response.data.message);
+      console.error('取关失败:', error.response.data.message);
     } else if (error instanceof Error) {
-      console.error('请求失败:', error.message);
+      console.error('取关失败:', error.message);
     } else {
-      console.error('请求失败: 未知错误');
+      console.error('取关失败: 未知错误');
     }
-    ElMessage.error('操作失败');
+    ElMessage.error('取关失败');
   }
-}
+};
 
 onMounted(() => {
   loadData();
