@@ -57,7 +57,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const INTERACTION_SERVICE_URL = import.meta.env.VITE_INTERACTION_SERVICE_BASE_API
-const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
+// const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 const VIDEO_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 const USER_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 
@@ -84,6 +84,7 @@ const loadGroups = async () => {
     }
 
     groupList.value = data.data || []
+    console.log(groupList.value)
 
     // 默认选中第一个分组
     if (groupList.value.length > 0) {
@@ -150,6 +151,7 @@ const loadVideosByGroup = async (groupId: number) => {
             duration: 0,
             createAt: '',
             updateAt: '',
+            description:'',
             userId: 0,
             type: false,
             area: 0,
