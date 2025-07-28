@@ -4,7 +4,7 @@
       <!-- 左侧1/3：视频封面 -->
       <div class="cover-container">
         <el-image
-          :src="video.coverUrl"
+          :src="`${BASE_MINIO_URL}/cover/${video.coverUrl}`"
           class="video-cover"
           fit="cover"
           :alt="video.title"
@@ -21,7 +21,7 @@
         <!-- UP主信息 -->
         <div class="uploader-info">
           <el-avatar
-            :src="uploaderAvatar"
+            :src="`${BASE_MINIO_URL}/avatar/${uploaderAvatar}`"
             :size="32"
             class="uploader-avatar"
           />
@@ -43,32 +43,12 @@
 
 <script setup lang="ts">
 import { VideoPlay } from '@element-plus/icons-vue'
-// import { computed } from 'vue'
+import type { VideoData,VideoCardInfo } from '@/types/entity/video'
 
-// 定义视频接口
-interface VideoData {
-  id: number
-  userId: string
-  videoUrl: string
-  coverUrl: string
-  title: string
-  type: boolean
-  duration: number
-  area: number
-  tags: []
-  createAt: string
-  updateAt: string
-}
+const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
-// 定义 props
-interface Props {
-  video: VideoData
-  uploaderName?: string
-  uploaderAvatar?: string
-  playCount?: number
-}
-
-const props = withDefaults(defineProps<Props>(), {
+// 导出属性
+const props = withDefaults(defineProps<VideoCardInfo>(), {
   uploaderName: '未知UP主',
   uploaderAvatar: '',
   playCount: 0
@@ -185,6 +165,9 @@ const handleCardClick = () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: #303133;
+  line-clamp: 2;
+  display: box;
+  display: -webkit-box;
 }
 
 .uploader-info {

@@ -1,129 +1,260 @@
 <template>
-  <div class="user-grid">
-    <!-- 空状态提示 -->
-    <div v-if="userList.length === 0"
-      class="empty-state">
+  <div class="fan-page">
+    <!-- 粉丝列表 -->
+    <div
+      v-if="userList.length === 0"
+      class="empty-state"
+    >
       <el-empty description="您还没有任何粉丝" />
     </div>
-    <!-- 粉丝列表 -->
-    <el-row v-else :gutter="16"
-      class="grid-container">
-      <el-col v-for="user in userList"
+
+    <el-row
+      v-else
+      :gutter="16"
+    >
+      <el-col
+        v-for="user in userList"
         :key="user.id"
         :xs="24"
         :sm="12"
         :md="8"
         :lg="6"
-        class="grid-item">
-          <UserCard :user="user"
+      >
+        <UserCard
+          :user="user"
+          :is-followed="user.isFollowing"
           default-text="已回关"
           second-text="回关"
-          @follow-change="handleFollowChange" />
+          class="grid-item"
+          @follow-change="handleFollowChange"
+        />
       </el-col>
     </el-row>
+
+    <!-- 关注分组选择弹窗 -->
+    <FollowGroupSelector
+      v-model="followDialogVisible"
+      title="选择关注分组"
+      confirm-text="确认回关"
+      @confirm="handleFollowConfirm"
+      @cancel="handleFollowCancel"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import UserCard from '@/components/userCard/UserCard.vue'
-import { computed,onMounted,ref } from 'vue'
-import axios from 'axios';
+import FollowGroupSelector from '@/components/FollowGroupSelector/FollowGroupSelector.vue';
+import UserCard from '@/components/userCard/UserCard.vue';
+import type { UserCardInfo, UserProfile } from '@/types/entity/user';
+import type { UserFollowRequest, UserUnfollowRequest } from '@/types/request/userRequest';
+import type { UserFanResponse } from '@/types/response/userResponse';
 import request from '@/utils/request';
+import axios from 'axios';
 import { ElMessage } from 'element-plus';
-import type { UserProfile,UserCardInfo } from '@/types/entity/user'
+import { computed, onMounted, ref } from 'vue';
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API;
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
 
-onMounted(() => {
-  loadData()
-})
+// 存储粉丝数据
+const fansList = ref<UserFanResponse[]>([]);
 
-interface UserFan{
-  profile: UserProfile
-  isFollowing: boolean
-}
+// 关注分组选择弹窗状态
+const followDialogVisible = ref(false);
+let pendingFollowUserId: number | null = null;
+let pendingOnFailure: (() => void) | null = null;
 
-const userFollowMap = ref<Map<UserProfile, boolean>>(new Map());
+// 加载粉丝数据
 const loadData = async () => {
-  try{
-    // 获取关注列表
+  try {
     const response = await request.get(`${BASE_SERVER_URL}/user/fans`);
     const data = response.data;
-    if(data.code !== 200){
+
+    console.log(data)
+    if (data.code !== 200) {
       console.error('获取粉丝列表失败:', data.message);
       ElMessage.error('获取粉丝列表失败');
       return;
     }
-    if(!data.data){
+
+    if (!data.data || !Array.isArray(data.data)) {
       ElMessage.info('您还没有任何粉丝');
+      fansList.value = [];
       return;
     }
 
-    data.data.forEach((user:UserFan) => {
-      userFollowMap.value.set(user.profile, user.isFollowing)
-    })
-  }
-  catch (error: unknown) {
-      if (axios.isAxiosError(error) && error.response) {
-          console.error('注册失败:', error.response.data.message);
-      } else if (error instanceof Error) {
-          console.error('请求失败:', error.message);
-      } else {
-          console.error('请求失败: 未知错误');
-      }
+    // 将后端返回的格式转换为 UserFanResponse 格式
+    fansList.value = data.data.map((item: {
+      userProfiles: UserProfile,
+      isFollowBack: boolean
+    }) => ({
+      profile: item.userProfiles,
+      isFollowing: item.isFollowBack
+    } as UserFanResponse));
+
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('获取粉丝列表失败:', error.response.data.message);
+    } else if (error instanceof Error) {
+      console.error('获取粉丝列表失败:', error.message);
+    } else {
+      console.error('获取粉丝列表失败: 未知错误');
+    }
+    ElMessage.error('获取粉丝列表失败');
   }
 }
 
-const handleFollowChange = async ({ newState, userId, onFailure }:{newState:boolean,userId:number,onFailure:()=>void}) => {
-  console.log('状态变化:', newState)
-  const action = newState ? 'follow' : 'unfollow'
+// 计算显示列表
+const userList = computed<UserCardInfo[]>(() => {
+  return fansList.value.map(fanResponse => ({
+    id: fanResponse.profile.userId,
+    name: fanResponse.profile.nickname,
+    signature: fanResponse.profile.sign,
+    avatar: fanResponse.profile.avatar && fanResponse.profile.avatar !== 'null'
+      ? `${BASE_MINIO_URL}/avatar/${fanResponse.profile.avatar}`
+      : '',
+    isFollowing: fanResponse.isFollowing
+  }))
+});
+
+// 处理关注状态变化
+const handleFollowChange = async ({ newState, userId, onFailure }: {
+  newState: boolean,
+  userId: number,
+  onFailure: () => void
+}) => {
+  console.log('状态变化:', newState, 'userId:', userId);
+
+  if (newState) {
+    // 回关操作 - 显示分组选择弹窗
+    pendingFollowUserId = userId;
+    pendingOnFailure = onFailure;
+    followDialogVisible.value = true;
+  } else {
+    // 取关操作 - 直接执行
+    await executeUnfollow(userId, onFailure);
+  }
+};
+
+// 关注分组选择确认
+const handleFollowConfirm = async (groupId: number) => {
+  if (pendingFollowUserId === null || pendingOnFailure === null) return;
+
   try {
-    // TODO API调用
-    const response = await request.post(`${BASE_SERVER_URL}/user/${action}`, {
-      userId: userId
-    });
-    if (response.data.code !== 200&&!response.data.data) {
-      console.error('操作失败:', response.data.message);
-      ElMessage.error('操作失败');
+    const requestBody: UserFollowRequest = {
+      userId: 0,
+      followId: pendingFollowUserId,
+      groupId: groupId,
+      createAt: new Date().toISOString()
+    };
+
+    const response = await request.post(`${BASE_SERVER_URL}/user/follow`, requestBody);
+
+    if (response.data.code !== 200) {
+      console.error('回关失败:', response.data.message);
+      ElMessage.error('回关失败');
+      pendingOnFailure();
+      return;
+    }
+
+    // 更新本地状态
+    const fanIndex = fansList.value.findIndex(fan =>
+      fan.profile.userId === pendingFollowUserId
+    );
+
+    if (fanIndex !== -1) {
+      fansList.value[fanIndex].isFollowing = true;
+    }
+
+    ElMessage.success('回关成功');
+
+  } catch (error: unknown) {
+    if (pendingOnFailure) pendingOnFailure();
+    if (axios.isAxiosError(error) && error.response) {
+      console.error('回关失败:', error.response.data.message);
+    } else if (error instanceof Error) {
+      console.error('回关失败:', error.message);
+    } else {
+      console.error('回关失败: 未知错误');
+    }
+    ElMessage.error('回关失败');
+  } finally {
+    // 清理状态
+    pendingFollowUserId = null;
+    pendingOnFailure = null;
+  }
+};
+
+// 关注分组选择取消
+const handleFollowCancel = () => {
+  if (pendingOnFailure) {
+    pendingOnFailure();
+  }
+  pendingFollowUserId = null;
+  pendingOnFailure = null;
+};
+
+// 执行取关操作
+const executeUnfollow = async (userId: number, onFailure: () => void) => {
+  try {
+    const requestBody: UserUnfollowRequest = {
+      userId: 0,
+      followId: userId,
+      groupId: 0
+    };
+
+    const response = await request.post(`${BASE_SERVER_URL}/user/unfollow`, requestBody);
+
+    if (response.data.code !== 200) {
+      console.error('取关失败:', response.data.message);
+      ElMessage.error('取关失败');
       onFailure();
       return;
     }
-    ElMessage.success(newState ? '回关' : '已取消回关');
+
+    // 更新本地状态
+    const fanIndex = fansList.value.findIndex(fan =>
+      fan.profile.userId === userId
+    );
+
+    if (fanIndex !== -1) {
+      fansList.value[fanIndex].isFollowing = false;
+    }
+
+    ElMessage.success('取消回关成功');
+
   } catch (error: unknown) {
     onFailure();
     if (axios.isAxiosError(error) && error.response) {
-      console.error('请求失败:', error.response.data.message);
+      console.error('取关失败:', error.response.data.message);
     } else if (error instanceof Error) {
-      console.error('请求失败:', error.message);
+      console.error('取关失败:', error.message);
     } else {
-      console.error('请求失败: 未知错误');
+      console.error('取关失败: 未知错误');
     }
+    ElMessage.error('取关失败');
   }
-}
+};
 
-const userList = computed<UserCardInfo[]>(() => {
-  return Array.from(userFollowMap.value.keys()).map(profile => ({
-      id: profile.id,
-      name: profile.nickname,
-      signature: profile.sign,
-      avatar: `${BASE_MINIO_URL}/avatar/${profile.avatar}`
-    }))
-  })
+onMounted(() => {
+  loadData();
+});
 </script>
 
 <style scoped>
-.user-grid {
+.fan-page {
   padding: 20px;
+  background-color: #fff;
 }
 
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
 }
 
 .grid-item {
-  width: 100%;
+  margin-bottom: 16px;
 }
 </style>

@@ -1,19 +1,713 @@
 <template>
   <div class="video-page">
-    <h1>视频详情页</h1>
-    <p>当前视频ID: {{ videoId }}</p>
+    <el-row :gutter="24">
+      <!-- 主要内容区域 -->
+      <el-col :span="18">
+        <!-- 视频播放器区域 -->
+        <!-- 使用 VideoPlayer 组件 -->
+        <VideoPlayer
+          :video-stream-url="videoStreamUrl"
+          :loading="loading"
+          :error="error"
+          :video-id=videoId
+          @retry="loadVideoInfo"
+        />
+
+        <!-- 视频信息区域 -->
+        <VideoInfoActions
+          :video-data="videoData"
+          :like-data="likeData"
+          :collect-data="collectData"
+          :coin-data="coinData"
+          :like-loading="likeLoading"
+          :coin-loading="coinLoading"
+          @like="handleLike"
+          @coin="handleCoin"
+          @favorite="handleFavorite"
+        />
+
+        <!-- 评论区域 -->
+        <VideoComments :video-id="videoId" />
+      </el-col>
+
+      <!-- 侧边栏占位 -->
+      <el-col :span="6">
+        <el-card
+          class="sidebar-card"
+          shadow="never"
+        >
+          <VideoRecommendations
+            :video-id="videoId"
+            :tags="videoData.tags"
+          />
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 收藏分组选择弹窗 -->
+    <el-dialog
+      v-model="collectDialogVisible"
+      title="选择收藏分组"
+      width="450px"
+      :before-close="cancelCollect"
+    >
+      <div class="collect-dialog-content">
+        <div class="group-selection">
+          <div
+            v-for="group in collectionGroups"
+            :key="group.id"
+            class="group-item"
+            :class="{ 'selected': selectedGroupId === group.id }"
+            @click="selectedGroupId = group.id"
+          >
+            <el-radio
+              :model-value="selectedGroupId"
+              :value="group.id"
+              class="group-radio"
+              @change="selectedGroupId = group.id"
+            >
+              <div class="group-content">
+                <span class="group-name">{{ group.name }}</span>
+                <span
+                  v-if="group.userId === null"
+                  class="default-tag"
+                >默认</span>
+              </div>
+            </el-radio>
+          </div>
+        </div>
+
+        <div
+          class="empty-state"
+          v-if="collectionGroups.length === 0"
+        >
+          <el-empty description="暂无收藏分组，请先创建分组" />
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="cancelCollect">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="collectLoading"
+            :disabled="!selectedGroupId || collectionGroups.length === 0"
+            @click="confirmCollect"
+          >
+            确认收藏
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
+import type { VideoData } from '@/types/entity/video'
+import type { CollectionGroup } from '@/types/entity/videoCollect'
+import request from '@/utils/request'
+import { ElMessage } from 'element-plus'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
+import VideoComments from '../components/VideoPageComponents/VideoComments.vue'
+import VideoInfoActions from '../components/VideoPageComponents/VideoInfoActions.vue'
+import VideoPlayer from '../components/VideoPageComponents/VideoPlayer.vue'
+import VideoRecommendations from '../components/VideoPageComponents/VideoRecommendations.vue'
+
 const route = useRoute()
-const videoId = route.params.videoId
+const videoId = Number(route.params.videoId)
+
+// 环境变量
+const INTERACTION_SERVICE_URL = import.meta.env.VITE_INTERACTION_SERVICE_BASE_API;
+const MINIO_SERVICE_URL = import.meta.env.VITE_MINIO_SERVICE_BASE_API
+const VIDEO_SERVER_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
+
+// 响应式数据
+const loading = ref(true)
+const error = ref(false)
+const videoData = ref<VideoData>({
+  id: 0,
+  userId: 0,
+  videoUrl: '',
+  coverUrl: '',
+  title: '',
+  type: false,
+  duration: 0,
+  description:"",
+  area: 0,
+  tags: [],
+  createAt: '',
+  updateAt: ''
+})
+
+const videoStreamUrl = ref('')
+
+//点赞相关状态
+const likeData = ref({
+  isLiked: false,
+  likeCount: 0
+})
+const likeLoading = ref(false)
+
+// 投币相关状态 - 移到这里
+const coinData = ref({
+  isCoined: false,
+  coinCount: 0
+})
+const coinLoading = ref(false)
+
+// 收藏相关状态
+const collectDialogVisible = ref(false)
+const collectionGroups = ref<CollectionGroup[]>([])
+const selectedGroupId = ref<number | null>(null)
+const collectLoading = ref(false)
+const currentCollectedGroupId = ref<number | null>(null)
+
+// 收藏数据状态
+const collectData = ref({
+  isCollected: false,
+  collectCount: 0
+})
+
+// 加载投币信息 - 移到这里
+// 修改 loadCoinData 函数，确保正确解析响应数据
+const loadCoinData = async () => {
+  try {
+    console.log('开始加载投币信息，videoId:', videoId)
+    
+    // 获取投币数量
+    const coinCountRes = await request.get(`${INTERACTION_SERVICE_URL}/video/coin-count`, {
+      params: { videoId: videoId }
+    })
+    console.log('投币数量响应:', coinCountRes)
+    
+    // 检查是否已投币
+    const isCoinedRes = await request.get(`${INTERACTION_SERVICE_URL}/video/is-coined`, {
+      params: { videoId: videoId }
+    })
+    console.log('是否已投币响应:', isCoinedRes)
+    
+    // 确保正确解析响应数据结构
+    coinData.value = {
+      coinCount: coinCountRes.data?.data ?? 0,  // 使用 ?? 替代 ||
+      isCoined: isCoinedRes.data?.data ?? false
+    }
+    
+    console.log('投币数据更新为:', coinData.value)
+    
+  } catch (error) {
+    console.error('加载投币信息失败:', error)
+    // 确保失败时有默认值
+    coinData.value = {
+      coinCount: 0,
+      isCoined: false
+    }
+  }
+}
+
+// 投币处理 - 移到这里
+const handleCoin = async (coinAmount: number) => {
+  if (coinData.value.isCoined) {
+    ElMessage.warning('您已经投过币了！')
+    return
+  }
+
+  coinLoading.value = true
+  
+  try {
+    await request.post(`${INTERACTION_SERVICE_URL}/video/coin`, {
+      videoId: videoId,
+      coin: coinAmount
+    })
+    
+    ElMessage.success(`投币成功！感谢您的${coinAmount}个硬币！`)
+    
+    // 更新投币状态
+    coinData.value.isCoined = true
+    coinData.value.coinCount += coinAmount
+    
+  } catch (error: any) {
+    console.error('投币失败:', error)
+    ElMessage.error(error.response?.data?.message || '投币失败，请重试')
+  } finally {
+    coinLoading.value = false
+  }
+}
+
+// 加载点赞信息
+const loadLikeInfo = async () => {
+  try {
+    const response = await request.get(`${INTERACTION_SERVICE_URL}/video/like`, {
+      params: {
+        videoId: videoId
+      }
+    })
+
+    if (response.data.code === 200) {
+      const data = response.data.data
+      likeData.value = {
+        isLiked: data.isLiked || false,
+        likeCount: data.likeCount || 0
+      }
+    }
+  } catch (error) {
+    console.error('获取点赞信息失败:', error)
+    likeData.value = {
+      isLiked: false,
+      likeCount: 0
+    }
+  }
+}
+
+// 互动
+const handleLike = async () => {
+  if (likeLoading.value) return
+
+  try {
+    likeLoading.value = true
+
+    if (likeData.value.isLiked) {
+      const response = await request.delete(`${INTERACTION_SERVICE_URL}/video/like`, {
+        params: {
+          videoId: videoId
+        }
+      })
+
+      if (response.data.code === 200) {
+        likeData.value.isLiked = false
+        likeData.value.likeCount = Math.max(0, likeData.value.likeCount - 1)
+        ElMessage.success('已取消点赞')
+      } else {
+        throw new Error(response.data.message || '取消点赞失败')
+      }
+    } else {
+      const response = await request.post(`${INTERACTION_SERVICE_URL}/video/like`, null, {
+        params: {
+          videoId: videoId
+        }
+      })
+
+      if (response.data.code === 200) {
+        likeData.value.isLiked = true
+        likeData.value.likeCount += 1
+        ElMessage.success('点赞成功')
+      } else {
+        throw new Error(response.data.message || '点赞失败')
+      }
+    }
+  } catch (error) {
+    console.error('点赞操作失败:', error)
+    ElMessage.error('操作失败，请重试')
+  } finally {
+    likeLoading.value = false
+  }
+}
+
+// 获取收藏分组列表
+const loadCollectionGroups = async () => {
+  try {
+    const response = await request.get(`${INTERACTION_SERVICE_URL}/video/collection-groups`)
+
+    if (response.data.code === 200) {
+      collectionGroups.value = response.data.data || []
+      if (collectionGroups.value.length > 0) {
+        selectedGroupId.value = collectionGroups.value[0].id
+      }
+    } else {
+      throw new Error(response.data.message || '获取收藏分组失败')
+    }
+  } catch (error) {
+    console.error('获取收藏分组失败:', error)
+    ElMessage.error('获取收藏分组失败')
+  }
+}
+
+const handleFavorite = async () => {
+  collectDialogVisible.value = true
+  await loadCollectionGroups()
+
+  if (collectData.value.isCollected && currentCollectedGroupId.value) {
+    selectedGroupId.value = currentCollectedGroupId.value
+  } else if (collectionGroups.value.length > 0) {
+    selectedGroupId.value = collectionGroups.value[0].id
+  }
+}
+
+// 确认收藏
+const confirmCollect = async () => {
+  if (!selectedGroupId.value) {
+    ElMessage.warning('请选择收藏分组')
+    return
+  }
+
+  try {
+    collectLoading.value = true
+
+    const addVideoCollectionDTO = {
+      userId: 0,
+      videoId: Number(videoId),
+      groupId: selectedGroupId.value,
+      collectedAt: new Date()
+    }
+
+    const response = await request.post(`${INTERACTION_SERVICE_URL}/video/add-collection`, addVideoCollectionDTO)
+
+    if (response.data.code === 200) {
+      const wasCollected = collectData.value.isCollected
+
+      ElMessage.success('收藏成功')
+      collectDialogVisible.value = false
+
+      collectData.value.isCollected = true
+      currentCollectedGroupId.value = selectedGroupId.value
+
+      if (!wasCollected) {
+        collectData.value.collectCount += 1
+      }
+
+    } else {
+      throw new Error(response.data.message || '收藏失败')
+    }
+
+  } catch (error) {
+    console.error('收藏失败:', error)
+    ElMessage.error('收藏失败，请重试')
+  } finally {
+    collectLoading.value = false
+  }
+}
+
+// 取消收藏弹窗
+const cancelCollect = () => {
+  collectDialogVisible.value = false
+  selectedGroupId.value = null
+}
+
+// 构建视频流URL
+const buildVideoStreamUrl = (videoUrl: string): string => {
+  const bucketName = 'video'
+  const encodedVideoUrl = encodeURIComponent(videoUrl)
+  
+  return `${MINIO_SERVICE_URL}/upload/video-slice/${bucketName}?objectName=${encodedVideoUrl}`
+}
+
+// 加载收藏信息
+const loadCollectInfo = async () => {
+  try {
+    const countResponse = await request.get(`${INTERACTION_SERVICE_URL}/video/video-collect-count`, {
+      params: {
+        videoId: videoId
+      }
+    })
+
+    if (countResponse.data.code === 200) {
+      collectData.value.collectCount = countResponse.data.data || 0
+    }
+
+    const isCollectedResponse = await request.get(`${INTERACTION_SERVICE_URL}/video/is-video-collected`, {
+      params: {
+        videoId: videoId
+      }
+    })
+
+    if (isCollectedResponse.data.code === 200) {
+      const groupId = isCollectedResponse.data.data
+
+      if (groupId !== null) {
+        collectData.value.isCollected = true
+        currentCollectedGroupId.value = groupId
+      } else {
+        collectData.value.isCollected = false
+        currentCollectedGroupId.value = null
+      }
+    }
+
+  } catch (error) {
+    console.error('获取收藏信息失败:', error)
+    collectData.value = {
+      isCollected: false,
+      collectCount: 0
+    }
+    currentCollectedGroupId.value = null
+  }
+}
+
+// 加载视频信息
+const loadVideoInfo = async () => {
+  try {
+    loading.value = true
+    error.value = false
+
+    console.log('加载视频信息:', videoId)
+    
+    const hisResponse = await request.post(`${VIDEO_SERVER_URL}/video/video-views`, videoId, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    if (hisResponse.data.code !== 200) {
+      ElMessage.error('添加历史记录失败:', hisResponse.data.data)
+    }
+
+    // 并行加载所有信息
+    await Promise.all([
+      loadLikeInfo(),
+      loadCollectInfo(),
+      loadCoinData()
+    ])
+
+    const response = await request.get(`${VIDEO_SERVER_URL}/video/id`, {
+      params: {
+        videoId: videoId
+      }
+    })
+
+    if (response.data.code !== 200) {
+      console.error('获取视频信息失败:', response.data.data)
+      throw new Error(response.data.message || '获取视频信息失败')
+    }
+
+    const data = response.data.data as VideoData
+    videoData.value = data
+
+    console.log(data)
+
+    if (data.videoUrl) {
+      videoStreamUrl.value = buildVideoStreamUrl(data.videoUrl)
+      console.log('视频流URL:', videoStreamUrl.value)
+    }
+
+  } catch (err) {
+    console.error('加载视频信息失败:', err)
+    error.value = true
+    ElMessage.error('加载视频信息失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 初始化
+onMounted(() => {
+  loadVideoInfo()
+})
 </script>
 
 <style scoped>
 .video-page {
   padding: 20px;
+  /* 移除最大宽度限制，让页面可以利用更多空间 */
+  max-width: none;
+  margin: 0 auto;
+  /* 设置最小宽度确保在大屏幕上有合理的最小宽度 */
+  min-width: 1200px;
+}
+
+/* 侧边栏包装器 */
+.sidebar-wrapper {
+  /* 让侧边栏可以向右扩展 */
+  width: 100%;
+  max-width: 400px;
+  /* 设置最大宽度避免过宽 */
+  margin-left: auto;
+  /* 如果需要的话可以让侧边栏靠右 */
+}
+
+.sidebar-card {
+  position: sticky;
+  top: 20px;
+  width: 100%;
+  /* 让卡片内容可以充分利用空间 */
+  min-height: 600px;
+}
+
+/* 或者更激进的方案：完全利用右侧空间 */
+.video-page {
+  padding: 20px;
+  max-width: 1600px;
+  /* 增加最大宽度 */
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 响应式：在中等屏幕上调整布局 */
+@media (min-width: 1400px) {
+  .sidebar-wrapper {
+    max-width: 450px;
+  }
+}
+
+@media (min-width: 1600px) {
+  .sidebar-wrapper {
+    max-width: 500px;
+  }
+}
+
+/* 保持原有样式 */
+.collect-dialog-content {
+  padding: 10px 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.group-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.group-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--el-border-color);
+  cursor: pointer;
+  transition: all 0.3s;
+  background: var(--el-fill-color-blank);
+}
+
+.group-item:hover {
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.group-item.selected {
+  border-color: var(--el-color-primary);
+  background-color: var(--el-color-primary-light-9);
+}
+
+.group-radio {
+  width: 100%;
+  margin: 0;
+}
+
+.group-radio .el-radio__input {
+  margin-right: 12px;
+}
+
+.group-radio .el-radio__label {
+  width: 100%;
+  padding: 0;
+}
+
+.group-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.group-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+}
+
+.default-tag {
+  font-size: 12px;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--el-color-primary-light-7);
+  font-weight: normal;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+
+/* 选中状态的单选框样式 */
+.group-item.selected .el-radio__input.is-checked .el-radio__inner {
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+}
+
+.group-item.selected .el-radio__input.is-checked+.el-radio__label {
+  color: var(--el-text-color-primary);
+}
+
+/* 弹窗整体样式调整 */
+.el-dialog__header {
+  padding: 20px 20px 10px 20px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.el-dialog__body {
+  padding: 20px;
+}
+
+.el-dialog__footer {
+  padding: 15px 20px 20px 20px;
+}
+
+/* 滚动条样式 */
+.collect-dialog-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.collect-dialog-content::-webkit-scrollbar-track {
+  background: var(--el-fill-color-lighter);
+  border-radius: 3px;
+}
+
+.collect-dialog-content::-webkit-scrollbar-thumb {
+  background: var(--el-border-color-dark);
+  border-radius: 3px;
+}
+
+.collect-dialog-content::-webkit-scrollbar-thumb:hover {
+  background: var(--el-text-color-placeholder);
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+  .video-page {
+    min-width: auto;
+    max-width: 1200px;
+  }
+
+  .sidebar-wrapper {
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .el-dialog {
+    width: 90% !important;
+    margin: 0 5%;
+  }
+
+  .group-item {
+    padding: 16px 12px;
+  }
+
+  .group-name {
+    font-size: 16px;
+  }
+
+  .collect-dialog-content {
+    max-height: 300px;
+  }
+
+  .sidebar-wrapper {
+    max-width: none;
+  }
+}
+
+/* 点击动画效果 */
+.group-item:active {
+  transform: scale(0.98);
 }
 </style>

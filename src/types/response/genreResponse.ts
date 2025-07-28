@@ -1,5 +1,5 @@
-export interface GenreResponse {
+export interface GenreResponse<T=unknown> {
   code: number
   message: string
-  data: string|number|[]|null
+  data: T|string|number|boolean|[]|null
 }

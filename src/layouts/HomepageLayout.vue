@@ -1,5 +1,6 @@
 <template>
-  <div class="home">
+  <div>
+    <HeaderBar :sticky="false"/>
     <!-- 新增的头部背景区域 -->
     <div class="profile-header">
       <!-- 背景图片 -->
@@ -17,7 +18,7 @@
       </div>
     </div>
     <!-- 固定导航菜单容器 -->
-    <div class="sticky-menu-container">
+    <div class="homePage-sticky-menu-container">
       <el-menu
         mode="horizontal"
         background-color="transparent"
@@ -28,10 +29,10 @@
       >
         <!-- 左侧导航项 -->
         <div class="left-menus">
-          <el-menu-item index="/home/home">主页</el-menu-item>
-          <el-menu-item index="/home/home">动态</el-menu-item>
-          <el-menu-item index="/home/home">投稿</el-menu-item>
-          <el-menu-item index="/home/home">收藏</el-menu-item>
+          <el-menu-item index="/home">个人主页</el-menu-item>
+          <el-menu-item index="/home/moment">动态</el-menu-item>
+          <el-menu-item index="/home/uploadVideo">投稿</el-menu-item>
+          <el-menu-item index="/home/collect">收藏</el-menu-item>
           <el-menu-item index="/home/edit">设置</el-menu-item>
         </div>
 
@@ -74,6 +75,7 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import HeaderBar from '@/components/headerBar/HeaderBar.vue'
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API;
@@ -118,15 +120,9 @@ const stats = ref({
 const loadData = async () => {
   try {
     // 获取关注列表
-    const fanRes = await request.get(`${BASE_SERVER_URL}/user/fans`)
     const userInfoRes = await request.get(`${BASE_SERVER_URL}/user/info`)
     const followCountRes = await request.get(`${BASE_SERVER_URL}/user/follow-count`)
     const fansCountRes = await request.get(`${BASE_SERVER_URL}/user/fans-count`)
-    if (fanRes.data.code !== 200) {
-      console.error('获取粉丝数据失败:', fanRes.data.message)
-      ElMessage.error('获取粉丝数据失败')
-      return
-    }
     if (userInfoRes.data.code !== 200) {
       console.error('获取用户信息失败:', userInfoRes.data.message)
       ElMessage.error('获取用户信息失败')
@@ -137,8 +133,8 @@ const loadData = async () => {
       ElMessage.error('获取关注总数失败')
     }
     if (fansCountRes.data.code !== 200) {
-      console.error('获取关注总数失败:', fansCountRes.data.message)
-      ElMessage.error('获取关注总数失败')
+      console.error('获取粉丝总数失败:', fansCountRes.data.message)
+      ElMessage.error('获取粉丝总数失败')
     }
 
     const backendUserInfo = userInfoRes.data.data as UserInfo
@@ -225,7 +221,7 @@ const formattedStats = computed(() => ({
 }
 
 /* 固定导航菜单容器 */
-.sticky-menu-container {
+.homePage-sticky-menu-container {
   position: sticky;
   top: 0;
   z-index: 1000;

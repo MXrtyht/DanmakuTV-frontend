@@ -22,18 +22,15 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
-interface User {
-  id: number
-  name: string
-  signature: string
-  avatar: string
-}
+import type { UserCardInfo } from '@/types/entity/user'
 
 // 导出属性
-const props = defineProps<{user: User;
+const props = defineProps<{
+  user: UserCardInfo;
   defaultText?: string;
-  secondText?: string;}>()
+  secondText?: string;
+  isFollowed?: boolean;
+}>()
 
 // 定义emit事件（如果需要）
 const emit = defineEmits<{
@@ -48,7 +45,7 @@ const emit = defineEmits<{
 }>()
 
 // 响应式状态
-const isFollowing = ref(true)
+const isFollowing = ref(props.isFollowed ?? true)
 
 // 按钮事件
 const toggleFollow = () => {

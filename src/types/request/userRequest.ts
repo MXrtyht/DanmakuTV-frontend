@@ -28,6 +28,13 @@ export interface UserFollowRequest {
   createAt: string
 }
 
+// 用户取关其他用户
+export interface UserUnfollowRequest {
+  userId: number
+  followId:number
+  groupId:number
+}
+
 // 创建关注分组
 export interface CreateFollowGroupRequest {
   userId: number

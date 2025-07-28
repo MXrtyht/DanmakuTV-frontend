@@ -1,6 +1,6 @@
 <template>
   <!-- 固定导航菜单容器 -->
-  <div class="sticky-menu-container">
+  <div :class="['headerBar-sticky-menu-container', { 'is-sticky': sticky }]">
     <el-menu
       mode="horizontal"
       background-color="transparent"
@@ -20,7 +20,11 @@
       </div>
 
       <!-- 中间搜索框 -->
-      <div class="center-section">
+      <!-- 中间搜索框（通过 showSearch 控制） -->
+      <div
+        class="center-section"
+        v-if="showSearch"
+      >
         <el-input
           v-model="searchKeyword"
           placeholder="搜索视频、UP主"
@@ -29,14 +33,17 @@
           size="default"
           @keyup.enter="handleSearch"
         >
-          <template #append>
-            <el-button
+          <template #append> <el-button
               @click="handleSearch"
               :icon="Search"
-            />
-          </template>
+            /> </template>
         </el-input>
       </div>
+      <!-- 搜索框占位（当不显示搜索框时） -->
+      <div
+        class="center-section placeholder"
+        v-else
+      ></div>
 
       <!-- 右侧导航项 -->
       <div class="right-section">
@@ -49,7 +56,7 @@
             :size="36"
             :src="userInfo.avatar"
             class="user-avatar"
-            style="cursor: pointer;"
+            style="cursor: pointer"
           >
             <el-icon>
               <User />
@@ -110,31 +117,22 @@
 </template>
 
 <script setup lang="ts">
-import { Search, User } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/authentication'
+import type { UserInfo } from '@/types/entity/user'
 import request from '@/utils/request'
+import { Search, User } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const BASE_SERVER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
 // 搜索关键词
 const searchKeyword = ref('')
-
-// 用户信息接口
-interface UserInfo {
-  userId: number
-  nickname: string
-  gender: string
-  birthday: string
-  sign: string
-  announcement: string
-  avatar: string
-  coin: number
-}
 
 // 前端用户信息
 interface FrontendUserInfo {
@@ -144,8 +142,26 @@ interface FrontendUserInfo {
 
 const userInfo = ref<FrontendUserInfo>({
   avatar: '',
-  name: ''
+  name: '',
 })
+
+const props = defineProps({
+  sticky: {
+    type: Boolean,
+    default: true, // 默认固定
+  },
+  showSearch: {
+    type: Boolean,
+    default: true, // 默认显示搜索框
+  },
+})
+
+watch(
+  () => props.sticky,
+  (val) => {
+    console.log('sticky prop changed:', val) // 确认值是否正确
+  },
+)
 
 // 加载用户信息
 const loadUserInfo = async () => {
@@ -160,10 +176,8 @@ const loadUserInfo = async () => {
 
     const backendUserInfo = userInfoRes.data.data as UserInfo
     userInfo.value = {
-      avatar: backendUserInfo.avatar
-        ? `${BASE_MINIO_URL}/avatar/${backendUserInfo.avatar}`
-        : '',
-      name: backendUserInfo.nickname
+      avatar: backendUserInfo.avatar ? `${BASE_MINIO_URL}/avatar/${backendUserInfo.avatar}` : '',
+      name: backendUserInfo.nickname,
     }
   } catch (error) {
     console.error('获取用户信息失败:', error)
@@ -173,9 +187,12 @@ const loadUserInfo = async () => {
 // 搜索处理
 const handleSearch = () => {
   if (searchKeyword.value.trim()) {
-    console.log('搜索:', searchKeyword.value)
-    ElMessage.info(`搜索: ${searchKeyword.value}`)
-    // TODO: 实现搜索功能
+    router.push({
+      path: '/search',
+      query: {
+        q: searchKeyword.value.trim()
+      } // 通过 URL 参数传递关键词
+    });
   }
 }
 
@@ -186,30 +203,22 @@ const goHome = () => {
 
 // 投稿处理
 const handleUpload = () => {
-  console.log('跳转到投稿页面')
-  ElMessage.info('跳转到投稿页面')
-  // TODO: 跳转到投稿页面
+  router.push('/home/uploadVideo')
 }
 
 // 历史处理
 const handleHistory = () => {
-  console.log('跳转到历史页面')
-  ElMessage.info('跳转到历史页面')
-  // TODO: 跳转到历史页面
+  router.push('/history')
 }
 
 // 收藏处理
 const handleFavorite = () => {
-  console.log('跳转到收藏页面')
-  ElMessage.info('跳转到收藏页面')
-  // TODO: 跳转到收藏页面
+  router.push('/home/collect')
 }
 
 // 动态处理
 const handleDynamic = () => {
-  console.log('跳转到动态页面')
-  ElMessage.info('跳转到动态页面')
-  // TODO: 跳转到动态页面
+  router.push('/home/moment')
 }
 
 // 下拉菜单处理
@@ -222,9 +231,38 @@ const handleCommand = (command: string) => {
       router.push('/home/edit')
       break
     case 'logout':
-      ElMessage.warning('退出登录功能待实现')
-      // TODO: 实现退出登录
+      handleLogout()
       break
+  }
+}
+
+// 处理退出登录
+const handleLogout = async () => {
+  try {
+    // 显示确认对话框
+    await ElMessageBox.confirm(
+      '确定要退出登录吗？',
+      '退出登录',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+        center: true
+      }
+    )
+
+    // 用户确认退出，清除本地存储的token
+    authStore.clearToken()
+
+    // 显示退出成功消息
+    ElMessage.success('退出登录成功')
+
+    // 跳转到登录页面
+    router.push('/login')
+
+  } catch {
+    // 用户取消退出登录，什么都不做
+    console.log('用户取消退出登录')
   }
 }
 
@@ -235,13 +273,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 默认导航菜单容器 */
+.headerBar-sticky-menu-container {
+  background-color: white;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+
 /* 固定导航菜单容器 */
-.sticky-menu-container {
+.headerBar-sticky-menu-container.is-sticky {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background-color: white;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 .header-menu {
@@ -282,6 +324,17 @@ onMounted(() => {
   justify-content: center;
   max-width: 600px;
   margin: 0 40px;
+}
+
+.center-section.placeholder {
+  /* 保持与搜索框相同的尺寸 */
+  width: 100%;
+  max-width: 500px;
+  height: 40px;
+  /* 与输入框高度一致 */
+  margin: 0 40px;
+  /* 透明占位，不干扰布局 */
+  visibility: hidden;
 }
 
 .search-input {
