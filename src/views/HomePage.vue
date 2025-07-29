@@ -10,7 +10,7 @@
       <el-row :gutter="16">
         <!-- gutter 设置列间距 -->
         <el-col v-for="video in videoList" :key="video.video.id" :xs="24" :sm="12" :md="8" :lg="6">
-          <VideoCard :video="video.video" :uploader-name="video.uploaderName" :uploader-avatar="video.uploaderAvatar" @click="handleCardClick(video.video)"/>
+          <VideoCard :video="video.video" :uploader-name="video.uploaderName" :uploader-avatar="video.uploaderAvatar" :play-count="video.playCount" @click="handleCardClick(video.video)"/>
         </el-col>
       </el-row>
       <!-- 分页控件 -->
@@ -79,11 +79,27 @@ const loadVideos = async () => {
       return
     }
     pageData.value = res.data.data
-    // console.log('加载视频成功:', pageData.value.records)
+
+    const videoIdList:number[]=pageData.value.records.map((video)=>video.id)
+    const videoCount=await request.get(`${BASE_VEDIO_URL}/video/video-view-counts-batch`,{
+      params: { videoId: videoIdList },
+      paramsSerializer: {
+        indexes: null
+      }
+    })
+    if (videoCount.data.code !== 200 || !videoCount.data.data) {
+      console.error('获取视频播放量失败:', videoCount.data.message)
+      ElMessage.error('获取视频播放量失败，请稍后再试')
+      return
+    }
+    const countMap = new Map<number,number>(
+      videoCount.data.data.map((item:{videoId:number,count:number}) => [item.videoId, item.count])
+    );
     videoList.value = pageData.value.records.map((video) => ({
       video,
       uploaderName:user.nickname,
-      uploaderAvatar: user.avatar
+      uploaderAvatar: user.avatar,
+      playCount:countMap.get(video.id)
     }))
 
   } catch (error) {

@@ -402,15 +402,17 @@ const getSearchUserInfo = async () => {
 
         // 获取播放量
         const videoIdList: number[] = pageData.records.map((video) => video.id)
-        const videoCountRes = await getVideoPlayCountBatch(
-          videoIdList,
-          `${BASE_VEDIO_URL}/video/video-view-counts-batch`,
-        )
+        if(videoIdList.length>0){
+          const videoCountRes = await getVideoPlayCountBatch(
+            videoIdList,
+            `${BASE_VEDIO_URL}/video/video-view-counts-batch`,
+          )
 
-        if (videoCountRes !== undefined) {
-          userInfo.videos.forEach((video) => {
-            video.playCount = videoCountRes.get(video.id) || 0
-          })
+          if (videoCountRes !== undefined) {
+            userInfo.videos.forEach((video) => {
+              video.playCount = videoCountRes.get(video.id) || 0
+            })
+          }
         }
       }
     } catch (error) {
