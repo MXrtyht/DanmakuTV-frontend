@@ -195,8 +195,8 @@ import { getVideoPlayCountBatch } from '@/utils/utils'
 import { Search, User } from '@element-plus/icons-vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref,watch } from 'vue'
+import { useRouter,useRoute  } from 'vue-router'
 
 const BASE_VEDIO_URL = import.meta.env.VITE_VIDEO_SERVICE_BASE_API
 const BASE_USER_URL = import.meta.env.VITE_USER_SERVICE_BASE_API
@@ -204,6 +204,7 @@ const BASE_SEARCH_URL = import.meta.env.VITE_SEARCH_SERVICE_BASE_API
 const BASE_MINIO_URL = import.meta.env.VITE_MINIO_SERVER_BASE_API
 
 const router = useRouter()
+const route = useRoute()
 
 // 新增类型定义
 interface Page<T> {
@@ -282,6 +283,13 @@ const pagination = ref({
 const handleSearch = async () => {
   if (!searchKeyword.value.trim()) {
     return
+  }
+
+  if (route.query.q !== searchKeyword.value.trim()) {
+    router.push({
+      path: '/search',
+      query: { q: searchKeyword.value.trim() }
+    });
   }
 
   loading.value = true
@@ -690,6 +698,17 @@ onMounted(() => {
     handleSearch()
   }
 })
+
+watch(
+  () => route.query.q, // 监听 query.q 的变化
+  (newKeyword) => {
+    if (newKeyword) {
+      searchKeyword.value = newKeyword.toString();
+      handleSearch(); // 执行搜索逻辑
+    }
+  },
+  { immediate: true } // 首次加载也触发
+);
 </script>
 
 <style scoped>
